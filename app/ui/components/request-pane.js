@@ -68,7 +68,7 @@ class RequestPane extends React.PureComponent {
     this._handleEditDescription(true);
   }
 
-  _handleEditDescription (addDescription: boolean) {
+  async _handleEditDescription (addDescription: boolean) {
     showModal(RequestSettingsModal, {
       request: this.props.request,
       forceEditMode: addDescription

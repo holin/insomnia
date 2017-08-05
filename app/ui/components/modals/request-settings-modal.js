@@ -9,15 +9,39 @@ import {trackEvent} from '../../../analytics/index';
 import DebouncedInput from '../base/debounced-input';
 import MarkdownEditor from '../markdown-editor';
 
+
+import Dropdown from '../base/dropdown/dropdown';
+import DropdownButton from '../base/dropdown/dropdown-button';
+import DropdownItem from '../base/dropdown/dropdown-item';
+import DropdownDivider from '../base/dropdown/dropdown-divider';
+
 @autobind
 class RequestSettingsModal extends PureComponent {
   constructor (props) {
     super(props);
     this.state = {
       request: null,
+      workspaceMap: {},
+      workspaces: [],
       showDescription: false,
       defaultPreviewMode: false
     };
+  }
+
+  componentDidMount () {
+    this._loadWorkspaces();
+  }
+
+  async _loadWorkspaces () {
+    const workspaces = await models.workspace.all();
+    let workspaceMap = {};
+    workspaces.forEach((workspace) => {
+      workspaceMap[workspace._id] = workspace
+    });
+    this.setState({
+      workspaces,
+      workspaceMap
+    });
   }
 
   _setModalRef (n) {
@@ -51,9 +75,16 @@ class RequestSettingsModal extends PureComponent {
     this.setState({showDescription: true});
   }
 
+  async _handleChangeWorkspace (workspace) {
+    const parentId = workspace._id;
+    const request = await models.request.update(this.state.request, {parentId});
+    this.setState({request});
+  }
+
   show ({request, forceEditMode}) {
     this.modal.show();
     const hasDescription = !!request.description;
+
     this.setState({
       request,
       showDescription: forceEditMode || hasDescription,
@@ -92,8 +123,12 @@ class RequestSettingsModal extends PureComponent {
       handleGetRenderContext
     } = this.props;
 
-    const {showDescription, defaultPreviewMode} = this.state;
-
+    const {showDescription, defaultPreviewMode, workspaceMap} = this.state;
+    let {workspaces} = this.state
+    workspaces = workspaces.filter(function(workspace){
+      return workspace._id != request.parentId;
+    });
+    const workspace = workspaceMap[request.parentId];
     return (
       <div>
         <div className="form-control form-control--outlined">
@@ -132,6 +167,26 @@ class RequestSettingsModal extends PureComponent {
             Add Description
           </button>
         )}
+        <div className="form-control form-control--outlined">
+          <label>Workspace
+            {' '}
+            <Dropdown key="workspace" outline>
+              <DropdownButton className="btn btn--clicky">
+                {workspace.name} <i className="fa fa-caret-down"/>
+              </DropdownButton>
+              <DropdownDivider>Change to Other Workspace</DropdownDivider>
+              {
+                workspaces.map((workspace) => {
+                  return (
+                    <DropdownItem key={workspace._id} value={workspace._id} onClick={() => this._handleChangeWorkspace(workspace)}>
+                      {workspace.name}
+                    </DropdownItem>
+                  )
+                })
+              }
+            </Dropdown>
+          </label>
+        </div>
         <div className="pad-top">
           <div className="form-control form-control--thin">
             <label>Send cookies automatically
