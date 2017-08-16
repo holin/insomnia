@@ -57,6 +57,7 @@ class KeyValueEditorRow extends PureComponent {
   }
 
   _handleNameChange (name) {
+    name = name.trim();
     this._sendChange({name});
   }
 
