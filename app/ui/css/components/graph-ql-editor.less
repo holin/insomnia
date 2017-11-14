@@ -3,7 +3,13 @@
 .graphql-editor {
   display: grid;
   height: 100%;
-  grid-template-rows: minmax(0, auto) min-content min-content minmax(0, min-content) min-content;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr)
+  min-content
+  min-content
+  min-content
+  minmax(0, min-content)
+  min-content;
 
   & > h2 {
     color: var(--hl);
@@ -15,7 +21,6 @@
   .graphql-editor__query, .graphql-editor__variables {
     height: 100%;
     max-height: 100%;
-    overflow: auto;
   }
 
   .graphql-editor__query .cm-attribute {

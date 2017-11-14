@@ -1,5 +1,6 @@
-import React, {PureComponent, PropTypes} from 'react';
-import {Tab, Tabs, TabList, TabPanel} from 'react-tabs';
+import React, {PureComponent} from 'react';
+import PropTypes from 'prop-types';
+import {Tab, TabList, TabPanel, Tabs} from 'react-tabs';
 import autobind from 'autobind-decorator';
 import Modal from '../base/modal';
 import Button from '../base/button';
@@ -13,32 +14,24 @@ import Account from '../settings/account';
 import Plugins from '../settings/plugins';
 import Theme from '../settings/theme';
 import * as models from '../../../models/index';
-import {Curl} from 'node-libcurl';
-import {getAppVersion, getAppName} from '../../../common/constants';
+import {Curl} from 'insomnia-node-libcurl';
+import {getAppName, getAppVersion} from '../../../common/constants';
 import {trackEvent} from '../../../analytics/index';
 import * as session from '../../../sync/session';
 import Tooltip from '../tooltip';
 
 export const TAB_INDEX_EXPORT = 1;
+export const TAB_INDEX_SHORTCUTS = 3;
 
 @autobind
 class SettingsModal extends PureComponent {
   constructor (props) {
     super(props);
     this.state = {};
-    this._currentTabIndex = -1;
   }
 
   _setModalRef (n) {
     this.modal = n;
-  }
-
-  _trackTab (name) {
-    trackEvent('Setting', `Tab ${name}`);
-  }
-
-  _handleTabSelect (currentTabIndex) {
-    this.setState({currentTabIndex});
   }
 
   _handleUpdateSetting (key, value) {
@@ -90,11 +83,6 @@ class SettingsModal extends PureComponent {
     this.modal.hide();
   }
 
-  toggle (currentTabIndex = 0) {
-    this.setState({currentTabIndex});
-    this.modal.toggle();
-  }
-
   render () {
     const {settings} = this.props;
     const {currentTabIndex} = this.state;
@@ -114,54 +102,52 @@ class SettingsModal extends PureComponent {
           </span>
         </ModalHeader>
         <ModalBody noScroll>
-          <Tabs onSelect={this._handleTabSelect}
-                selectedIndex={currentTabIndex}
-                forceRenderTabPanel>
+          <Tabs className="react-tabs" defaultIndex={currentTabIndex}>
             <TabList>
-              <Tab selected={this._currentTabIndex === 0}>
-                <Button value="General" onClick={this._trackTab}>
+              <Tab>
+                <Button value="General">
                   General
                 </Button>
               </Tab>
-              <Tab selected={this._currentTabIndex === 1}>
-                <Button value="Import/Export" onClick={this._trackTab}>
+              <Tab>
+                <Button value="Import/Export">
                   Data
                 </Button>
               </Tab>
-              <Tab selected={this._currentTabIndex === 2}>
-                <Button value="Themes" onClick={this._trackTab}>
+              <Tab>
+                <Button value="Themes">
                   Themes
                 </Button>
               </Tab>
-              <Tab selected={this._currentTabIndex === 3}>
-                <Button value="shortcuts" onClick={this._trackTab}>
-                  Shortcuts
+              <Tab>
+                <Button value="Shortcuts">
+                  Keyboard
                 </Button>
               </Tab>
-              <Tab selected={this._currentTabIndex === 4}>
-                <Button value="Account" onClick={this._trackTab}>
+              <Tab>
+                <Button value="Account">
                   Account
                 </Button>
               </Tab>
-              <Tab selected={this._currentTabIndex === 1}>
-                <Button value="Plugins" onClick={this._trackTab}>
+              <Tab>
+                <Button value="Plugins">
                   Plugins
                 </Button>
               </Tab>
-              <Tab selected={this._currentTabIndex === 5}>
-                <Button value="About" onClick={this._trackTab}>
+              <Tab>
+                <Button value="About">
                   About
                 </Button>
               </Tab>
             </TabList>
-            <TabPanel className="pad scrollable">
+            <TabPanel className="react-tabs__tab-panel pad scrollable">
               <General
                 settings={settings}
                 handleToggleMenuBar={this.props.handleToggleMenuBar}
                 updateSetting={this._handleUpdateSetting}
               />
             </TabPanel>
-            <TabPanel className="pad scrollable">
+            <TabPanel className="react-tabs__tab-panel pad scrollable">
               <ImportExport
                 handleExportAll={this._handleExportAllToFile}
                 handleExportWorkspace={this._handleExportWorkspace}
@@ -169,16 +155,17 @@ class SettingsModal extends PureComponent {
                 handleImportUri={this._handleImportUri}
               />
             </TabPanel>
-            <TabPanel className="scrollable">
+            <TabPanel className="react-tabs__tab-panel scrollable">
               <Theme
                 handleChangeTheme={this._handleChangeTheme}
                 activeTheme={settings.theme}
               />
             </TabPanel>
-            <TabPanel className="pad scrollable"><SettingsShortcuts/></TabPanel>
-            <TabPanel className="pad scrollable"><Account/></TabPanel>
-            <TabPanel className="pad scrollable"><Plugins/></TabPanel>
-            <TabPanel className="pad scrollable"><About/></TabPanel>
+            <TabPanel
+              className="react-tabs__tab-panel pad scrollable"><SettingsShortcuts/></TabPanel>
+            <TabPanel className="react-tabs__tab-panel pad scrollable"><Account/></TabPanel>
+            <TabPanel className="react-tabs__tab-panel pad scrollable"><Plugins/></TabPanel>
+            <TabPanel className="react-tabs__tab-panel pad scrollable"><About/></TabPanel>
           </Tabs>
         </ModalBody>
       </Modal>

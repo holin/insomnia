@@ -1,4 +1,5 @@
-import React, {PropTypes, PureComponent} from 'react';
+import React, {PureComponent} from 'react';
+import PropTypes from 'prop-types';
 import autobind from 'autobind-decorator';
 import CodeEditor from '../../codemirror/code-editor';
 
@@ -13,6 +14,7 @@ class RawEditor extends PureComponent {
       keyMap,
       render,
       getRenderContext,
+      nunjucksPowerUserMode,
       lineWrapping,
       onChange,
       className
@@ -28,6 +30,7 @@ class RawEditor extends PureComponent {
         className={className}
         render={render}
         getRenderContext={getRenderContext}
+        nunjucksPowerUserMode={nunjucksPowerUserMode}
         onChange={onChange}
         mode={contentType}
         lineWrapping={lineWrapping}
@@ -46,6 +49,7 @@ RawEditor.propTypes = {
   indentSize: PropTypes.number.isRequired,
   keyMap: PropTypes.string.isRequired,
   lineWrapping: PropTypes.bool.isRequired,
+  nunjucksPowerUserMode: PropTypes.bool.isRequired,
 
   // Optional
   className: PropTypes.string,

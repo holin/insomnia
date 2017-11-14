@@ -1,4 +1,8 @@
 declare class Curl {
+  static getVersion: () => string;
+  static feature: {
+    NO_HEADER_PARSING: number
+  };
   static option: {
     ACCEPT_ENCODING: number,
     CAINFO: number,
@@ -12,8 +16,9 @@ declare class Curl {
     HTTPGET: number,
     HTTPHEADER: number,
     HTTPPOST: number,
-    INFILESIZE: number,
+    INFILESIZE_LARGE: number,
     KEYPASSWD: number,
+    MAXREDIRS: number,
     NETRC: number,
     NOBODY: number,
     NOPROGRESS: number,
@@ -24,6 +29,7 @@ declare class Curl {
     PROXY: number,
     PROXYAUTH: number,
     READDATA: number,
+    READFUNCTION: number,
     SSLCERT: number,
     SSLCERTTYPE: number,
     SSLKEY: number,
@@ -67,13 +73,14 @@ declare class Curl {
   };
 
   setOpt: (option: number, ...args: Array<any>) => void;
+  enable: (option: number, ...args: Array<any>) => void;
   getInfo: (option: string, ...args: Array<any>) => any;
   perform: () => void;
   close: () => void;
   on: (event: string, callback: Function) => void;
 }
 
-declare module 'node-libcurl' {
+declare module 'insomnia-node-libcurl' {
   declare module.exports: {
     Curl: typeof Curl
   }

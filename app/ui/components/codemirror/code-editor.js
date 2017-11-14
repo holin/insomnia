@@ -1,12 +1,11 @@
-import React, {PureComponent, PropTypes} from 'react';
+import * as React from 'react';
+import PropTypes from 'prop-types';
 import autobind from 'autobind-decorator';
 import CodeMirror from 'codemirror';
 import classnames from 'classnames';
 import clone from 'clone';
 import jq from 'jsonpath';
 import vkBeautify from 'vkbeautify';
-import {DOMParser} from 'xmldom';
-import xpath from 'xpath';
 import {showModal} from '../modals/index';
 import FilterHelpModal from '../modals/filter-help-modal';
 import * as misc from '../../../common/misc';
@@ -18,6 +17,7 @@ import {getTagDefinitions} from '../../../templating/index';
 import Dropdown from '../base/dropdown/dropdown';
 import DropdownButton from '../base/dropdown/dropdown-button';
 import DropdownItem from '../base/dropdown/dropdown-item';
+import * as xpath2 from '../../../common/xpath';
 
 const TAB_KEY = 9;
 const TAB_SIZE = 4;
@@ -27,7 +27,7 @@ const BASE_CODEMIRROR_OPTIONS = {
   placeholder: 'Start Typing...',
   foldGutter: true,
   height: 'auto',
-  autoRefresh: 500,
+  autoRefresh: 2000,
   lineWrapping: true,
   scrollbarStyle: 'native',
   lint: true,
@@ -48,6 +48,9 @@ const BASE_CODEMIRROR_OPTIONS = {
     'Ctrl-Q': function (cm) {
       cm.foldCode(cm.getCursor());
     },
+    [isMac() ? 'Cmd-Enter' : 'Ctrl-Enter']: function (cm) {
+      // HACK: So nothing conflicts withe the "Send Request" shortcut
+    },
     'Ctrl-Space': 'autocomplete',
 
     // Change default find command from "find" to "findPersistent" so the
@@ -57,7 +60,7 @@ const BASE_CODEMIRROR_OPTIONS = {
 };
 
 @autobind
-class CodeEditor extends PureComponent {
+class CodeEditor extends React.Component {
   constructor (props) {
     super(props);
 
@@ -183,7 +186,8 @@ class CodeEditor extends PureComponent {
     if (this.codeMirror) {
       this.codeMirror.setSelection(
         {line: -1, ch: -1},
-        {line: -1, ch: -1}
+        {line: -1, ch: -1},
+        {scroll: false}
       );
     }
   }
@@ -225,6 +229,11 @@ class CodeEditor extends PureComponent {
     this.codeMirror.on('blur', this._codemirrorBlur);
     this.codeMirror.on('paste', this._codemirrorPaste);
 
+    // Prevent these things if we're type === "password"
+    this.codeMirror.on('copy', this._codemirrorPreventWhenTypePassword);
+    this.codeMirror.on('cut', this._codemirrorPreventWhenTypePassword);
+    this.codeMirror.on('dragstart', this._codemirrorPreventWhenTypePassword);
+
     this.codeMirror.setCursor({line: -1, ch: -1});
 
     if (!this.codeMirror.getOption('indentWithTabs')) {
@@ -244,7 +253,7 @@ class CodeEditor extends PureComponent {
       this._codemirrorSetValue(defaultValue || '');
 
       // Setup nunjucks listeners
-      if (this.props.render) {
+      if (this.props.render && !this.props.nunjucksPowerUserMode) {
         this.codeMirror.enableNunjucksTags(this.props.render);
       }
 
@@ -316,11 +325,9 @@ class CodeEditor extends PureComponent {
   _prettifyXML (code) {
     if (this.props.updateFilter && this.state.filter) {
       try {
-        const dom = new DOMParser().parseFromString(code);
-        const nodes = xpath.select(this.state.filter, dom);
-        const inner = nodes.map(n => n.toString()).join('\n');
-        code = `<result>${inner}</result>`;
-      } catch (e) {
+        const results = xpath2.query(code, this.state.filter);
+        code = `<result>${results.map(r => r.outer).join('\n')}</result>`;
+      } catch (err) {
         // Failed to parse filter (that's ok)
         code = `<result></result>`;
       }
@@ -436,7 +443,8 @@ class CodeEditor extends PureComponent {
         getTags = async () => {
           const expandedTags = [];
           for (const tagDef of await getTagDefinitions()) {
-            if (tagDef.args[0].type !== 'enum') {
+            const firstArg = tagDef.args[0];
+            if (!firstArg || firstArg.type !== 'enum') {
               expandedTags.push(tagDef);
               continue;
             }
@@ -550,6 +558,13 @@ class CodeEditor extends PureComponent {
     }
   }
 
+  _codemirrorPreventWhenTypePassword (cm, e) {
+    const {type} = this.props;
+    if (type && type.toLowerCase() === 'password') {
+      e.preventDefault();
+    }
+  }
+
   /**
    * Wrapper function to add extra behaviour to our onChange event
    */
@@ -570,6 +585,11 @@ class CodeEditor extends PureComponent {
    * @param forcePrettify
    */
   _codemirrorSetValue (code, forcePrettify = false) {
+    if (typeof code !== 'string') {
+      console.warn('Code editor was passed non-string value', code);
+      return;
+    }
+
     this._originalCode = code;
 
     // Don't ignore changes from prettify
@@ -749,6 +769,7 @@ CodeEditor.propTypes = {
   onClick: PropTypes.func,
   onPaste: PropTypes.func,
   render: PropTypes.func,
+  nunjucksPowerUserMode: PropTypes.bool,
   getRenderContext: PropTypes.func,
   getAutocompleteConstants: PropTypes.func,
   keyMap: PropTypes.string,

@@ -1,7 +1,10 @@
-import React, {PureComponent, PropTypes} from 'react';
+import React, {PureComponent} from 'react';
+import PropTypes from 'prop-types';
 import autobind from 'autobind-decorator';
 import classnames from 'classnames';
-import {isMac} from '../../../common/constants';
+import KeydownBinder from '../keydown-binder';
+import * as hotkeys from '../../../common/hotkeys';
+import {pressedHotKey} from '../../../common/hotkeys';
 
 // Keep global z-index reference so that every modal will
 // appear over top of an existing one.
@@ -24,20 +27,13 @@ class Modal extends PureComponent {
       return;
     }
 
-    // Don't bubble up meta events up past the modal no matter what
-    // Example: ctrl+Enter to send requests
-    const isMeta = isMac() ? e.metaKey : e.ctrlKey;
-    if (isMeta) {
-      e.stopPropagation();
-    }
-
     // Don't check for close keys if we don't want them
     if (this.props.noEscape) {
       return;
     }
 
     const closeOnKeyCodes = this.props.closeOnKeyCodes || [];
-    const pressedEscape = e.keyCode === 27;
+    const pressedEscape = pressedHotKey(e, hotkeys.CLOSE_MODAL);
     const pressedElse = closeOnKeyCodes.find(c => c === e.keyCode);
 
     if (pressedEscape || pressedElse) {
@@ -111,24 +107,17 @@ class Modal extends PureComponent {
     this.props.onHide && this.props.onHide();
   }
 
-  componentDidMount () {
-    this._node.addEventListener('keydown', this._handleKeyDown);
-  }
-
-  componentWillUnmount () {
-    if (this._node) {
-      this._node.removeEventListener('keydown', this._handleKeyDown);
-    }
-  }
-
   render () {
     const {tall, wide, noEscape, className, children} = this.props;
     const {open, zIndex, forceRefreshCounter} = this.state;
 
+    if (!open) {
+      return null;
+    }
+
     const classes = classnames(
       'modal',
       className,
-      {'modal--open': open},
       {'modal--fixed-height': tall},
       {'modal--noescape': noEscape},
       {'modal--wide': wide},
@@ -140,18 +129,20 @@ class Modal extends PureComponent {
     }
 
     return (
-      <div ref={this._setModalRef}
-           tabIndex="-1"
-           className={classes}
-           style={styles}
-           onClick={this._handleClick}>
-        <div className="modal__backdrop overlay theme--overlay" data-close-modal></div>
-        <div className="modal__content__wrapper">
-          <div className="modal__content" key={forceRefreshCounter}>
-            {children}
+      <KeydownBinder stopMetaPropagation scoped onKeydown={this._handleKeyDown}>
+        <div ref={this._setModalRef}
+             tabIndex="-1"
+             className={classes}
+             style={styles}
+             onClick={this._handleClick}>
+          <div className="modal__backdrop overlay theme--overlay" data-close-modal></div>
+          <div className="modal__content__wrapper">
+            <div className="modal__content" key={forceRefreshCounter}>
+              {children}
+            </div>
           </div>
         </div>
-      </div>
+      </KeydownBinder>
     );
   }
 }

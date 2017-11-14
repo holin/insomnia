@@ -219,6 +219,10 @@ export function createWindow () {
           window.webContents.send('toggle-sidebar');
           trackEvent('App Menu', 'Toggle Sidebar');
         }
+      },
+      {
+        label: 'Toggle DevTools',
+        click: () => mainWindow.toggleDevTools()
       }
     ]
   };
@@ -241,15 +245,33 @@ export function createWindow () {
         label: 'Contact Support',
         click: () => {
           trackEvent('App Menu', 'Contact');
-          shell.openExternal('https://insomnia.rest/documentation/support-and-feedback/');
+          shell.openExternal('https://insomnia.rest/support/');
+        }
+      },
+      {
+        label: 'Keyboard Shortcuts',
+        click: (menuItem, window, e) => {
+          if (!window || !window.webContents) {
+            return;
+          }
+          window.webContents.send('toggle-preferences-shortcuts');
+          trackEvent('App Menu', 'Shortcuts');
+        }
+      },
+      {
+        label: 'Show App Data Folder',
+        click: (menuItem, window, e) => {
+          const directory = app.getPath('userData');
+          shell.showItemInFolder(directory);
+          trackEvent('App Menu', 'Open App Data');
         }
       },
       {
         label: 'Insomnia Help',
-        accelerator: 'CmdOrCtrl+?',
+        accelerator: 'CmdOrCtrl+/',
         click: () => {
           trackEvent('App Menu', 'Help');
-          shell.openExternal('https://insomnia.rest/documentation/');
+          shell.openExternal('https://support.insomnia.rest');
         }
       }
     ]
@@ -260,7 +282,7 @@ export function createWindow () {
     position: 'before=help',
     submenu: [{
       label: 'Reload',
-      accelerator: 'CmdOrCtrl+Shift+R',
+      accelerator: 'Shift+F5',
       click: () => mainWindow.reload()
     }, {
       label: 'Toggle DevTools',
@@ -286,12 +308,29 @@ export function createWindow () {
     }]
   };
 
+  const toolsMenu = {
+    label: 'Tools',
+    submenu: [{
+      label: 'Reload Plugins',
+      accelerator: 'CmdOrCtrl+Shift+R',
+      click: () => {
+        const window = BrowserWindow.getFocusedWindow();
+        if (!window || !window.webContents) {
+          return;
+        }
+
+        window.webContents.send('reload-plugins');
+      }
+    }]
+  };
+
   let template = [];
 
   template.push(applicationMenu);
   template.push(editMenu);
   template.push(viewMenu);
   template.push(windowMenu);
+  template.push(toolsMenu);
   template.push(helpMenu);
 
   if (isDevelopment() || process.env.INSOMNIA_FORCE_DEBUG) {

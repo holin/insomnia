@@ -1,17 +1,20 @@
+// @flow
 import jq from 'jsonpath';
-import {DOMParser} from 'xmldom';
-import xpath from 'xpath';
+import * as xpath from '../../common/xpath';
+import type {ResponseHeader} from '../../models/response';
+import type {PluginTemplateTag, PluginTemplateTagContext} from './index';
+import type {NunjucksParsedTagArg} from '../utils';
 
-export default {
+export default ({
   name: 'response',
   displayName: 'Response',
-  description: 'reference values from other requests',
+  description: 'reference values from other request\'s responses',
   args: [
     {
       displayName: 'Attribute',
       type: 'enum',
       options: [
-        {displayName: 'Body', description: 'attribute of response body', value: 'body'},
+        {displayName: 'Body Attribute', description: 'value of response body', value: 'body'},
         {displayName: 'Raw Body', description: 'entire response body', value: 'raw'},
         {displayName: 'Header', description: 'value of response header', value: 'header'}
       ]
@@ -23,8 +26,8 @@ export default {
     },
     {
       type: 'string',
-      hide: args => args[0].value === 'raw',
-      displayName: args => {
+      hide: (args: Array<NunjucksParsedTagArg>): boolean => args[0].value === 'raw',
+      displayName: (args: Array<Object>): string => {
         switch (args[0].value) {
           case 'body':
             return 'Filter (JSONPath or XPath)';
@@ -37,13 +40,13 @@ export default {
     }
   ],
 
-  async run (context, field, id, filter) {
+  async run (context: PluginTemplateTagContext, field: string, id: string, filter: string) {
     if (!['body', 'header', 'raw'].includes(field)) {
       throw new Error(`Invalid response field ${field}`);
     }
 
-    if (field !== 'raw' && !filter) {
-      throw new Error(`No ${field} filter specified`);
+    if (!id) {
+      throw new Error('No request specified');
     }
 
     const request = await context.util.models.request.getById(id);
@@ -58,7 +61,11 @@ export default {
     }
 
     if (!response.statusCode) {
-      throw new Error('No responses for request');
+      throw new Error('No successful responses for request');
+    }
+
+    if (field !== 'raw' && !filter) {
+      throw new Error(`No ${field} filter specified`);
     }
 
     const sanitizedFilter = filter.trim();
@@ -81,9 +88,9 @@ export default {
       throw new Error(`Unknown field ${field}`);
     }
   }
-};
+}: PluginTemplateTag);
 
-function matchJSONPath (bodyStr, query) {
+function matchJSONPath (bodyStr: string, query: string): string {
   let body;
   let results;
 
@@ -105,20 +112,15 @@ function matchJSONPath (bodyStr, query) {
     throw new Error(`Returned more than one result: ${query}`);
   }
 
-  return results[0];
+  if (typeof results[0] !== 'string') {
+    return JSON.stringify(results[0]);
+  } else {
+    return results[0];
+  }
 }
 
-function matchXPath (bodyStr, query) {
-  let results;
-
-  // This will never throw
-  const dom = new DOMParser().parseFromString(bodyStr);
-
-  try {
-    results = xpath.select(query, dom);
-  } catch (err) {
-    throw new Error(`Invalid XPath query: ${query}`);
-  }
+function matchXPath (bodyStr: string, query: string): string {
+  const results = xpath.query(bodyStr, query);
 
   if (results.length === 0) {
     throw new Error(`Returned no results: ${query}`);
@@ -126,16 +128,21 @@ function matchXPath (bodyStr, query) {
     throw new Error(`Returned more than one result: ${query}`);
   }
 
-  return results[0].childNodes.toString();
+  return results[0].inner;
 }
 
-function matchHeader (headers, name) {
+function matchHeader (headers: Array<ResponseHeader>, name: string): string {
+  if (!headers.length) {
+    throw new Error(`No headers available`);
+  }
+
   const header = headers.find(
     h => h.name.toLowerCase() === name.toLowerCase()
   );
 
   if (!header) {
-    throw new Error(`No match for header: ${name}`);
+    const names = headers.map(c => `"${c.name}"`).join(',\n\t');
+    throw new Error(`No header with name "${name}".\nChoices are [\n\t${names}\n]`);
   }
 
   return header.value;

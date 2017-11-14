@@ -1,4 +1,5 @@
-import React, {PropTypes, PureComponent} from 'react';
+import React, {PureComponent} from 'react';
+import PropTypes from 'prop-types';
 import autobind from 'autobind-decorator';
 import OneLineEditor from '../../codemirror/one-line-editor';
 import * as misc from '../../../../common/misc';
@@ -18,7 +19,7 @@ class BearerAuth extends PureComponent {
   }
 
   render () {
-    const {request, handleRender, handleGetRenderContext} = this.props;
+    const {request, handleRender, handleGetRenderContext, nunjucksPowerUserMode} = this.props;
     const {token} = request.authentication;
 
     return (
@@ -28,6 +29,7 @@ class BearerAuth extends PureComponent {
           onChange={this._handleChange}
           defaultValue={token || ''}
           render={handleRender}
+          nunjucksPowerUserMode={nunjucksPowerUserMode}
           placeholder="token"
           getRenderContext={handleGetRenderContext}
         />
@@ -39,6 +41,7 @@ class BearerAuth extends PureComponent {
 BearerAuth.propTypes = {
   handleRender: PropTypes.func.isRequired,
   handleGetRenderContext: PropTypes.func.isRequired,
+  nunjucksPowerUserMode: PropTypes.bool.isRequired,
   request: PropTypes.object.isRequired,
   onChange: PropTypes.func.isRequired
 };

@@ -1,11 +1,18 @@
-import React, {PropTypes, PureComponent} from 'react';
+import React, {PureComponent} from 'react';
+import PropTypes from 'prop-types';
 import autobind from 'autobind-decorator';
 import {Cookie} from 'tough-cookie';
 
 @autobind
 class ResponseCookiesViewer extends PureComponent {
   renderRow (h, i) {
-    const cookie = h ? Cookie.parse(h.value) : null;
+    let cookie = null;
+    try {
+      cookie = h ? Cookie.parse(h.value || '') : null;
+    } catch (err) {
+      console.warn('Failed to parse set-cookie header', h);
+    }
+
     const blank = <span className="super-duper-faint italic">--</span>;
     return (
       <tr className="selectable" key={i}>

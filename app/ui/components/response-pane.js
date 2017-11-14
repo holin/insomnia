@@ -2,7 +2,7 @@
 import type {Request} from '../../models/request';
 import type {Response} from '../../models/response';
 
-import React, {PureComponent} from 'react';
+import * as React from 'react';
 import autobind from 'autobind-decorator';
 import fs from 'fs';
 import mime from 'mime-types';
@@ -25,35 +25,37 @@ import {getSetCookieHeaders, nullFn} from '../../common/misc';
 import {cancelCurrentRequest} from '../../network/network';
 import {trackEvent} from '../../analytics';
 import Hotkey from './hotkey';
+import * as hotkeys from '../../common/hotkeys';
+import ErrorBoundary from './error-boundary';
+
+type Props = {
+  // Functions
+  handleSetFilter: Function,
+  showCookiesModal: Function,
+  handleSetPreviewMode: Function,
+  handleSetActiveResponse: Function,
+  handleDeleteResponses: Function,
+  handleDeleteResponse: Function,
+  handleShowRequestSettings: Function,
+
+  // Required
+  previewMode: string,
+  filter: string,
+  filterHistory: Array<string>,
+  editorFontSize: number,
+  editorIndentSize: number,
+  editorKeyMap: string,
+  editorLineWrapping: boolean,
+  loadStartTime: number,
+  responses: Array<Object>,
+
+  // Other
+  request: ?Request,
+  response: ?Response
+};
 
 @autobind
-class ResponsePane extends PureComponent {
-  props: {
-    // Functions
-    handleSetFilter: Function,
-    showCookiesModal: Function,
-    handleSetPreviewMode: Function,
-    handleSetActiveResponse: Function,
-    handleDeleteResponses: Function,
-    handleDeleteResponse: Function,
-    handleShowRequestSettings: Function,
-
-    // Required
-    previewMode: string,
-    filter: string,
-    filterHistory: Array<string>,
-    editorFontSize: number,
-    editorIndentSize: number,
-    editorKeyMap: string,
-    editorLineWrapping: boolean,
-    loadStartTime: number,
-    responses: Array<Object>,
-
-    // Other
-    request: ?Request,
-    response: ?Response
-  };
-
+class ResponsePane extends React.PureComponent<Props> {
   _handleGetResponseBody (): Buffer | null {
     if (!this.props.response) {
       return null;
@@ -186,25 +188,25 @@ class ResponsePane extends PureComponent {
                 <tr>
                   <td>Send Request</td>
                   <td className="text-right">
-                    <code><Hotkey char="Enter"/></code>
+                    <code><Hotkey hotkey={hotkeys.SEND_REQUEST}/></code>
                   </td>
                 </tr>
                 <tr>
                   <td>Focus Url Bar</td>
                   <td className="text-right">
-                    <code><Hotkey char="L"/></code>
+                    <code><Hotkey hotkey={hotkeys.FOCUS_URL}/></code>
                   </td>
                 </tr>
                 <tr>
                   <td>Manage Cookies</td>
                   <td className="text-right">
-                    <code><Hotkey char="K"/></code>
+                    <code><Hotkey hotkey={hotkeys.SHOW_COOKIES}/></code>
                   </td>
                 </tr>
                 <tr>
                   <td>Edit Environments</td>
                   <td className="text-right">
-                    <code><Hotkey char="E"/></code>
+                    <code><Hotkey hotkey={hotkeys.SHOW_ENVIRONMENTS}/></code>
                   </td>
                 </tr>
                 </tbody>
@@ -229,10 +231,10 @@ class ResponsePane extends PureComponent {
             <div className="no-wrap scrollable scrollable--no-bars pad-left">
               <StatusTag
                 statusCode={response.statusCode}
-                statusMessage={response.statusMessage || null}
+                statusMessage={response.statusMessage}
               />
               <TimeTag milliseconds={response.elapsedTime}/>
-              <SizeTag bytes={response.bytesRead}/>
+              <SizeTag bytesRead={response.bytesRead} bytesContent={response.bytesContent}/>
             </div>
             <ResponseHistoryDropdown
               activeResponse={response}
@@ -247,7 +249,7 @@ class ResponsePane extends PureComponent {
             />
           </header>
         )}
-        <Tabs className="pane__body" forceRenderTabPanel>
+        <Tabs className="react-tabs pane__body" forceRenderTabPanel>
           <TabList>
             <Tab>
               <PreviewModeDropdown
@@ -276,59 +278,65 @@ class ResponsePane extends PureComponent {
               <Button>Timeline</Button>
             </Tab>
           </TabList>
-          <TabPanel>
-            <ResponseViewer
-              key={response._id}
-              bytes={response.bytesRead}
-              contentType={response.contentType || ''}
-              previewMode={response.error ? PREVIEW_MODE_SOURCE : previewMode}
-              filter={filter}
-              filterHistory={filterHistory}
-              updateFilter={response.error ? null : handleSetFilter}
-              bodyPath={response.bodyPath}
-              getBody={this._handleGetResponseBody}
-              error={response.error}
-              editorLineWrapping={editorLineWrapping}
-              editorFontSize={editorFontSize}
-              editorIndentSize={editorIndentSize}
-              editorKeyMap={editorKeyMap}
-              url={response.url}
-            />
-          </TabPanel>
-          <TabPanel className="scrollable-container">
-            <div className="scrollable pad">
-              <ResponseHeadersViewer
-                key={response._id}
-                headers={response.headers}
+          <TabPanel className="react-tabs__tab-panel">
+            <ErrorBoundary key={response._id} errorClassName="font-error pad text-center">
+              <ResponseViewer
+                // Send larger one because legacy responses have bytesContent === -1
+                responseId={response._id}
+                bytes={Math.max(response.bytesContent, response.bytesRead)}
+                contentType={response.contentType || ''}
+                previewMode={response.error ? PREVIEW_MODE_SOURCE : previewMode}
+                filter={filter}
+                filterHistory={filterHistory}
+                updateFilter={response.error ? null : handleSetFilter}
+                bodyPath={response.bodyPath}
+                getBody={this._handleGetResponseBody}
+                error={response.error}
+                editorLineWrapping={editorLineWrapping}
+                editorFontSize={editorFontSize}
+                editorIndentSize={editorIndentSize}
+                editorKeyMap={editorKeyMap}
+                url={response.url}
               />
+            </ErrorBoundary>
+          </TabPanel>
+          <TabPanel className="react-tabs__tab-panel scrollable-container">
+            <div className="scrollable pad">
+              <ErrorBoundary key={response._id} errorClassName="font-error pad text-center">
+                <ResponseHeadersViewer headers={response.headers} />
+              </ErrorBoundary>
             </div>
           </TabPanel>
-          <TabPanel className="scrollable-container">
+          <TabPanel className="react-tabs__tab-panel scrollable-container">
             <div className="scrollable pad">
-              <ResponseCookiesViewer
-                handleShowRequestSettings={handleShowRequestSettings}
-                cookiesSent={response.settingSendCookies}
-                cookiesStored={response.settingStoreCookies}
-                showCookiesModal={showCookiesModal}
-                key={response._id}
-                headers={cookieHeaders}
-              />
+              <ErrorBoundary key={response._id} errorClassName="font-error pad text-center">
+                <ResponseCookiesViewer
+                  handleShowRequestSettings={handleShowRequestSettings}
+                  cookiesSent={response.settingSendCookies}
+                  cookiesStored={response.settingStoreCookies}
+                  showCookiesModal={showCookiesModal}
+                  headers={cookieHeaders}
+                />
+              </ErrorBoundary>
             </div>
           </TabPanel>
-          <TabPanel>
-            <ResponseTimelineViewer
-              key={response._id}
-              timeline={response.timeline || []}
-              editorLineWrapping={editorLineWrapping}
-              editorFontSize={editorFontSize}
-              editorIndentSize={editorIndentSize}
-            />
+          <TabPanel className="react-tabs__tab-panel">
+            <ErrorBoundary key={response._id} errorClassName="font-error pad text-center">
+              <ResponseTimelineViewer
+                timeline={response.timeline || []}
+                editorLineWrapping={editorLineWrapping}
+                editorFontSize={editorFontSize}
+                editorIndentSize={editorIndentSize}
+              />
+            </ErrorBoundary>
           </TabPanel>
         </Tabs>
-        <ResponseTimer
-          handleCancel={cancelCurrentRequest}
-          loadStartTime={loadStartTime}
-        />
+        <ErrorBoundary errorClassName="font-error pad text-center">
+          <ResponseTimer
+            handleCancel={cancelCurrentRequest}
+            loadStartTime={loadStartTime}
+          />
+        </ErrorBoundary>
       </section>
     );
   }

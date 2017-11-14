@@ -1,4 +1,5 @@
-import React, {PropTypes, PureComponent} from 'react';
+import React, {PureComponent} from 'react';
+import PropTypes from 'prop-types';
 import autobind from 'autobind-decorator';
 import Modal from '../base/modal';
 import ModalBody from '../base/modal-body';
@@ -82,7 +83,6 @@ class RequestSettingsModal extends PureComponent {
   }
 
   show ({request, forceEditMode}) {
-    this.modal.show();
     const hasDescription = !!request.description;
 
     this.setState({
@@ -91,10 +91,10 @@ class RequestSettingsModal extends PureComponent {
       defaultPreviewMode: hasDescription && !forceEditMode
     });
 
+    this.modal.show();
+
     if (forceEditMode) {
-      setTimeout(() => {
-        this._editor.focus();
-      }, 400);
+      setTimeout(() => this._editor.focus(), 400);
     }
   }
 
@@ -120,7 +120,8 @@ class RequestSettingsModal extends PureComponent {
       editorIndentSize,
       editorKeyMap,
       handleRender,
-      handleGetRenderContext
+      handleGetRenderContext,
+      nunjucksPowerUserMode
     } = this.props;
 
     const {showDescription, defaultPreviewMode, workspaceMap} = this.state;
@@ -158,6 +159,7 @@ class RequestSettingsModal extends PureComponent {
             lineWrapping={editorLineWrapping}
             handleRender={handleRender}
             handleGetRenderContext={handleGetRenderContext}
+            nunjucksPowerUserMode={nunjucksPowerUserMode}
             defaultValue={request.description}
             onChange={this._handleDescriptionChange}
           />
@@ -242,6 +244,7 @@ RequestSettingsModal.propTypes = {
   editorIndentSize: PropTypes.number.isRequired,
   editorKeyMap: PropTypes.string.isRequired,
   editorLineWrapping: PropTypes.bool.isRequired,
+  nunjucksPowerUserMode: PropTypes.bool.isRequired,
   handleRender: PropTypes.func.isRequired,
   handleGetRenderContext: PropTypes.func.isRequired
 };

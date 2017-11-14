@@ -129,6 +129,11 @@ code, pre, .monospace {
   font-family: @font-default;
 }
 
+.pre {
+  line-height: 1.3em;
+  white-space: pre;
+}
+
 div.notice,
 p.notice {
   text-align: center;
@@ -194,6 +199,14 @@ p.notice {
   }
 }
 
+.notice.subtle {
+  border-color: var(--hl-lg);
+  &::before {
+    opacity: 1;
+    background-color: var(--hl-xxs);
+  }
+}
+
 .notice.surprise {
   border-color: var(--color-surprise);
   &::before {
@@ -206,7 +219,7 @@ p.notice {
 }
 
 .text-right {
-  text-align: right;
+  text-align: right !important;
 }
 
 .text-left {
@@ -302,6 +315,15 @@ blockquote {
   & > *:not(:last-child) {
     padding-right: @padding-xs;
   }
+}
+
+.row-around {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-around !important;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .row-spaced {
@@ -507,6 +529,10 @@ i.fa:not(.fa--skinny) {
 
 .no-pad-bottom {
   padding-bottom: 0;
+}
+
+.no-pad-right {
+  padding-right: 0;
 }
 
 .no-pad-left {

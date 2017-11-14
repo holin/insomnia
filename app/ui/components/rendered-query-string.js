@@ -1,4 +1,5 @@
-import React, {PropTypes, PureComponent} from 'react';
+import React, {PureComponent} from 'react';
+import PropTypes from 'prop-types';
 import autobind from 'autobind-decorator';
 import * as querystring from '../../common/querystring';
 import * as misc from '../../common/misc';
@@ -39,7 +40,7 @@ class RenderedQueryString extends PureComponent {
       const {url, parameters} = result;
       const qs = querystring.buildFromParams(parameters);
       const fullUrl = querystring.joinUrl(url, qs);
-      this.setState({string: misc.prepareUrlForSending(fullUrl)});
+      this.setState({string: misc.prepareUrlForSending(fullUrl, request.settingEncodeUrl)});
     }
   }
 

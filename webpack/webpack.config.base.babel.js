@@ -1,3 +1,4 @@
+const webpack = require('webpack');
 const path = require('path');
 const pkg = require('../app/package.json');
 
@@ -50,6 +51,9 @@ module.exports = {
   resolve: {
     extensions: ['.js', '.json'],
     mainFields: ['webpack', 'browser', 'web', 'browserify', ['jam', 'main'], 'main']
+  },
+  node: {
+    __dirname: false // Use Node __dirname
   },
   externals: [
     // Omit all dependencies in app/package.json (we want them loaded at runtime via NodeJS)

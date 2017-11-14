@@ -11,6 +11,13 @@ Insomnia is a cross-platform _REST client_, built on top of [Electron](http://el
 
 ![Insomnia REST Client Screenshot](https://insomnia.rest/images/docs/promo.png)
 
+## Download
+
+Insomnia is available for Mac, Windows, and Linux and can be downloaded 
+from the website.
+
+**[https://insomnia.rest/download](https://insomnia.rest/download/)**
+
 ## Bugs and Feature Requests
 
 Have a bug or a feature request? First, read the 
@@ -37,7 +44,7 @@ Development on Insomnia can be done on Mac, Windows, or Linux as long as you hav
 <summary>Initial Dev Setup</summary>
 
 ```bash
-# Install dependencies and build addons for Electron
+# Install dependencies and build add-ons for Electron
 npm install
 npm run rebuild
 
@@ -61,6 +68,21 @@ the following tools:
 - [Flow](https://flow.org/) – For type annotations
 
 </details>
+
+## Plugins
+
+Here is a list of plugins available for installation via NPM.
+
+- [JWT Decode](https://www.npmjs.com/package/insomnia-plugin-jwtdecode) – Decode header or payload of JWT tokens
+- [XDebug](https://www.npmjs.com/package/insomna-plugin-xdebug) – Enable Xdebug debugging by adding an `XDEBUG_SESSION` cookie to the request.
+- [Default Headers](https://www.npmjs.com/package/insomna-plugin-default-headers) – Set default headers on requests
+- [Random Number](https://www.npmjs.com/package/insomnia-plugin-randomnumber) – Generate a random integer between a minumum and maximum
+- [Random Credit Card](https://www.npmjs.com/package/insomnia-plugin-randomcreditcard) – Generate random credit card numbers
+
+## Community Projects
+
+[Swaggymnia](https://github.com/mlabouardy/swaggymnia) – Generate [Swagger](https://swagger.io/) documentation for your existing API in Insomnia.
+
 
 ## License
 

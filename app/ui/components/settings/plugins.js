@@ -1,7 +1,7 @@
 // @flow
 import type {Plugin} from '../../../plugins/index';
 import {getPlugins} from '../../../plugins/index';
-import React from 'react';
+import * as React from 'react';
 import autobind from 'autobind-decorator';
 import * as electron from 'electron';
 import Button from '../base/button';
@@ -12,16 +12,19 @@ import installPlugin from '../../../plugins/install';
 import HelpTooltip from '../help-tooltip';
 import Link from '../base/link';
 import {delay} from '../../../common/misc';
+import {PLUGIN_PATH} from '../../../common/constants';
+
+type State = {
+  plugins: Array<Plugin>,
+  npmPluginValue: string,
+  error: string,
+  isInstallingFromNpm: boolean,
+  isRefreshingPlugins: boolean
+};
 
 @autobind
-class Plugins extends React.PureComponent {
-  state: {
-    plugins: Array<Plugin>,
-    npmPluginValue: string,
-    error: string,
-    isInstallingFromNpm: boolean,
-    isRefreshingPlugins: boolean
-  };
+class Plugins extends React.PureComponent<void, State> {
+  _isMounted: boolean;
 
   constructor (props: any) {
     super(props);
@@ -38,8 +41,10 @@ class Plugins extends React.PureComponent {
     this.setState({error: ''});
   }
 
-  _handleAddNpmPluginChange (e: Event & {target: HTMLButtonElement}) {
-    this.setState({npmPluginValue: e.target.value});
+  _handleAddNpmPluginChange (e: Event) {
+    if (e.target instanceof HTMLInputElement) {
+      this.setState({npmPluginValue: e.target.value});
+    }
   }
 
   async _handleAddFromNpm (e: Event): Promise<void> {
@@ -75,12 +80,28 @@ class Plugins extends React.PureComponent {
     const delta = Date.now() - start;
     await delay(500 - delta);
 
-    this.setState({plugins, isRefreshingPlugins: false});
+    if (this._isMounted) {
+      this.setState({plugins, isRefreshingPlugins: false});
+    }
+  }
+
+  async _handleClickRefreshPlugins () {
+    await this._handleRefreshPlugins();
     trackEvent('Plugins', 'Refresh');
   }
 
+  _handleClickShowPluginsFolder () {
+    electron.remote.shell.showItemInFolder(PLUGIN_PATH);
+    trackEvent('Plugins', 'Show Folder');
+  }
+
   componentDidMount () {
+    this._isMounted = true;
     this._handleRefreshPlugins();
+  }
+
+  componentWillUnmount () {
+    this._isMounted = false;
   }
 
   render () {
@@ -89,11 +110,11 @@ class Plugins extends React.PureComponent {
     return (
       <div>
         <p className="notice info no-margin-top">
-          Plugins is still an experimental feature. Please
+          Plugins is still an experimental feature. See
           {' '}
-          <Link href="https://insomnia.rest/documentation/support-and-feedback/">
-            Submit Feedback
-          </Link> if you have any.
+          <Link href="https://support.insomnia.rest/article/26-plugins">
+            Documentation
+          </Link> for more info.
         </p>
         {plugins.length === 0 ? (
           <div className="text-center faint italic pad">No Plugins Added</div>
@@ -165,13 +186,16 @@ class Plugins extends React.PureComponent {
 
         <div className="text-right">
           <button type="button"
-                  disabled={isRefreshingPlugins}
                   className="btn btn--clicky"
-                  onClick={this._handleRefreshPlugins}>
+                  onClick={this._handleClickShowPluginsFolder}>
+            Show Plugins Folder
+          </button>
+          <button type="button"
+                  disabled={isRefreshingPlugins}
+                  className="btn btn--clicky space-left"
+                  onClick={this._handleClickRefreshPlugins}>
             Reload Plugin List
-            {isRefreshingPlugins && (
-              <i className="fa fa-refresh fa-spin space-left"/>
-            )}
+            {isRefreshingPlugins && <i className="fa fa-refresh fa-spin space-left"/>}
           </button>
         </div>
       </div>

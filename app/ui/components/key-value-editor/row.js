@@ -1,5 +1,6 @@
 // eslint-disable-next-line filenames/match-exported
-import React, {PropTypes, PureComponent} from 'react';
+import React, {PureComponent} from 'react';
+import PropTypes from 'prop-types';
 import ReactDOM from 'react-dom';
 import autobind from 'autobind-decorator';
 import {DragSource, DropTarget} from 'react-dnd';
@@ -170,7 +171,8 @@ class KeyValueEditorRow extends PureComponent {
       valueInputType,
       valuePlaceholder,
       handleRender,
-      handleGetRenderContext
+      handleGetRenderContext,
+      nunjucksPowerUserMode
     } = this.props;
 
     if (pair.type === 'file') {
@@ -209,6 +211,7 @@ class KeyValueEditorRow extends PureComponent {
           onFocus={this._handleFocusValue}
           render={handleRender}
           getRenderContext={handleGetRenderContext}
+          nunjucksPowerUserMode={nunjucksPowerUserMode}
           getAutocompleteConstants={this._handleAutocompleteValues}
         />
       );
@@ -269,6 +272,7 @@ class KeyValueEditorRow extends PureComponent {
       namePlaceholder,
       handleRender,
       handleGetRenderContext,
+      nunjucksPowerUserMode,
       sortable,
       noDropZone,
       hideButtons,
@@ -313,6 +317,7 @@ class KeyValueEditorRow extends PureComponent {
               defaultValue={pair.name}
               render={handleRender}
               getRenderContext={handleGetRenderContext}
+              nunjucksPowerUserMode={nunjucksPowerUserMode}
               getAutocompleteConstants={this._handleAutocompleteNames}
               forceInput={forceInput}
               readOnly={readOnly}
@@ -392,6 +397,7 @@ KeyValueEditorRow.propTypes = {
   onBlurValue: PropTypes.func,
   handleRender: PropTypes.func,
   handleGetRenderContext: PropTypes.func,
+  nunjucksPowerUserMode: PropTypes.bool,
   handleGetAutocompleteNameConstants: PropTypes.func,
   handleGetAutocompleteValueConstants: PropTypes.func,
   namePlaceholder: PropTypes.string,

@@ -1,4 +1,5 @@
-import React, {PropTypes, PureComponent} from 'react';
+import React, {PureComponent} from 'react';
+import PropTypes from 'prop-types';
 import autobind from 'autobind-decorator';
 import {Dropdown, DropdownButton, DropdownDivider, DropdownItem} from '../base/dropdown';
 import Link from '../base/link';
@@ -101,8 +102,10 @@ class WorkspaceShareSettingsModal extends PureComponent {
   }
 
   async show () {
-    this.modal.show();
     this._resetState();
+    this.modal.show();
+
+    // This takes a while, so do it after show()
     await this._load();
   }
 

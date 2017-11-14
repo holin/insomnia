@@ -1,4 +1,5 @@
-import React, {PureComponent, PropTypes} from 'react';
+import React, {PureComponent} from 'react';
+import PropTypes from 'prop-types';
 import autobind from 'autobind-decorator';
 import HelpTooltip from '../help-tooltip';
 import {isMac} from '../../../common/constants';
@@ -101,6 +102,20 @@ class General extends PureComponent {
           </label>
         </div>
 
+        <div className="form-control form-control--thin">
+          <label className="inline-block">
+            Nunjucks Power User Mode
+            {' '}
+            <HelpTooltip>
+              Disable tag editing interface in favor of raw Nunjucks syntax (requires restart)
+            </HelpTooltip>
+            <input type="checkbox"
+                   name="nunjucksPowerUserMode"
+                   checked={settings.nunjucksPowerUserMode}
+                   onChange={this._handleUpdateSetting}/>
+          </label>
+        </div>
+
         <div className="form-row">
           <div className="form-control form-control--outlined pad-top-sm">
             <label>Text Editor Font Size (px)
@@ -139,13 +154,26 @@ class General extends PureComponent {
         </div>
 
         <div className="form-control form-control--outlined">
+          <label>Maximum Redirects
+            <HelpTooltip className="space-left">
+              (-1 for unlimited)
+            </HelpTooltip>
+            <input type="number"
+                   name="maxRedirects"
+                   min={-1}
+                   defaultValue={settings.maxRedirects}
+                   onChange={this._handleUpdateSetting}/>
+          </label>
+        </div>
+
+        <div className="form-control form-control--outlined">
           <label>Network Request Timeout
             <HelpTooltip className="space-left">
               Request timeout in milliseconds (0 for no timeout)
             </HelpTooltip>
             <input type="number"
                    name="timeout"
-                   min={0}
+                   min={-1}
                    defaultValue={settings.timeout}
                    onChange={this._handleUpdateSetting}/>
           </label>

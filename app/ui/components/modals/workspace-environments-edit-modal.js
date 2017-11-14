@@ -1,4 +1,5 @@
-import React, {PropTypes, PureComponent} from 'react';
+// @flow
+import * as React from 'react';
 import autobind from 'autobind-decorator';
 import classnames from 'classnames';
 import {Dropdown, DropdownButton, DropdownItem} from '../base/dropdown';
@@ -14,70 +15,115 @@ import ModalFooter from '../base/modal-footer';
 import * as models from '../../../models';
 import {trackEvent} from '../../../analytics/index';
 import {DEBOUNCE_MILLIS} from '../../../common/constants';
+import type {Workspace} from '../../../models/workspace';
+import type {Environment} from '../../../models/environment';
+import * as db from '../../../common/database';
+
+type Props = {
+  activeEnvironment: Environment | null,
+  editorFontSize: number,
+  editorIndentSize: number,
+  editorKeyMap: string,
+  lineWrapping: boolean,
+  render: Function,
+  getRenderContext: Function,
+  nunjucksPowerUserMode: boolean
+};
+
+type State = {
+  workspace: Workspace | null,
+  isValid: boolean,
+  subEnvironments: Array<Environment>,
+  rootEnvironment: Environment | null,
+  selectedEnvironmentId: string | null
+};
 
 @autobind
-class WorkspaceEnvironmentsEditModal extends PureComponent {
-  constructor (props) {
+class WorkspaceEnvironmentsEditModal extends React.PureComponent<Props, State> {
+  environmentEditorRef: ?EnvironmentEditor;
+  colorChangeTimeout: any;
+  saveTimeout: any;
+  modal: Modal;
+  editorKey: number;
+
+  constructor (props: Props) {
     super(props);
     this.state = {
       workspace: null,
       isValid: true,
       subEnvironments: [],
       rootEnvironment: null,
-      activeEnvironmentId: null
+      selectedEnvironmentId: null
     };
+
+    this.colorChangeTimeout = null;
+    this.editorKey = 0;
   }
 
   hide () {
-    this.modal.hide();
+    this.modal && this.modal.hide();
   }
 
-  _setEditorRef (n) {
-    this._envEditor = n;
+  _setEditorRef (n: ?EnvironmentEditor) {
+    this.environmentEditorRef = n;
   }
 
-  _setModalRef (n) {
+  _setModalRef (n: Modal | null) {
     this.modal = n;
   }
 
-  async show (workspace) {
-    this.modal.show();
+  async show (workspace: Workspace) {
+    const {activeEnvironment} = this.props;
+
+    // Default to showing the currently active environment
+    if (activeEnvironment) {
+      this.setState({selectedEnvironmentId: activeEnvironment._id});
+    }
+
     await this._load(workspace);
+
+    this.modal && this.modal.show();
     trackEvent('Environment Editor', 'Show');
   }
 
-  async toggle (workspace) {
-    this.modal.toggle();
-    await this._load(workspace);
-  }
+  async _load (workspace: Workspace | null, environmentToActivate: Environment | null = null) {
+    if (!workspace) {
+      console.warn('Failed to reload environment editor without Workspace');
+      return;
+    }
 
-  async _load (workspace, environmentToActivate = null) {
     const rootEnvironment = await models.environment.getOrCreateForWorkspace(workspace);
     const subEnvironments = await models.environment.findByParentId(rootEnvironment._id);
 
-    let activeEnvironmentId;
+    let selectedEnvironmentId;
 
     if (environmentToActivate) {
-      activeEnvironmentId = environmentToActivate._id;
+      selectedEnvironmentId = environmentToActivate._id;
     } else if (this.state.workspace && workspace._id !== this.state.workspace._id) {
       // We've changed workspaces, so load the root one
-      activeEnvironmentId = rootEnvironment._id;
+      selectedEnvironmentId = rootEnvironment._id;
     } else {
       // We haven't changed workspaces, so try loading the last environment, and fall back
       // to the root one
-      activeEnvironmentId = this.state.activeEnvironmentId || rootEnvironment._id;
+      selectedEnvironmentId = this.state.selectedEnvironmentId || rootEnvironment._id;
     }
 
     this.setState({
       workspace,
       rootEnvironment,
       subEnvironments,
-      activeEnvironmentId
+      selectedEnvironmentId
     });
   }
 
-  async _handleAddEnvironment (isPrivate = false) {
+  async _handleAddEnvironment (isPrivate: boolean = false) {
     const {rootEnvironment, workspace} = this.state;
+
+    if (!rootEnvironment) {
+      console.warn('Failed to add environment. Unknown root environment');
+      return;
+    }
+
     const parentId = rootEnvironment._id;
     const environment = await models.environment.create({parentId, isPrivate});
     await this._load(workspace, environment);
@@ -88,9 +134,9 @@ class WorkspaceEnvironmentsEditModal extends PureComponent {
     );
   }
 
-  async _handleShowEnvironment (environment) {
+  async _handleShowEnvironment (environment: Environment) {
     // Don't allow switching if the current one has errors
-    if (!this._envEditor.isValid()) {
+    if (this.environmentEditorRef && !this.environmentEditorRef.isValid()) {
       return;
     }
 
@@ -99,11 +145,12 @@ class WorkspaceEnvironmentsEditModal extends PureComponent {
     }
 
     const {workspace} = this.state;
+
     await this._load(workspace, environment);
     trackEvent('Environment Editor', 'Show Environment');
   }
 
-  async _handleDeleteEnvironment (environment) {
+  async _handleDeleteEnvironment (environment: Environment) {
     const {rootEnvironment, workspace} = this.state;
 
     // Don't delete the root environment
@@ -113,26 +160,30 @@ class WorkspaceEnvironmentsEditModal extends PureComponent {
 
     // Delete the current one, then activate the root environment
     await models.environment.remove(environment);
-
     await this._load(workspace, rootEnvironment);
     trackEvent('Environment', 'Delete');
   }
 
-  async _handleChangeEnvironmentName (environment, name) {
+  async _handleChangeEnvironmentName (environment: Environment, name: string) {
     const {workspace} = this.state;
 
     // NOTE: Fetch the environment first because it might not be up to date.
     // For example, editing the body updates silently.
     const realEnvironment = await models.environment.getById(environment._id);
+
+    if (!realEnvironment) {
+      return;
+    }
+
     await models.environment.update(realEnvironment, {name});
     await this._load(workspace);
 
     trackEvent('Environment', 'Rename');
   }
 
-  _handleChangeEnvironmentColor (environment, color) {
-    clearTimeout(this._colorChangeTimeout);
-    this._colorChangeTimeout = setTimeout(async () => {
+  _handleChangeEnvironmentColor (environment: Environment, color: string | null) {
+    clearTimeout(this.colorChangeTimeout);
+    this.colorChangeTimeout = setTimeout(async () => {
       const {workspace} = this.state;
       await models.environment.update(environment, {color});
       await this._load(workspace);
@@ -142,36 +193,56 @@ class WorkspaceEnvironmentsEditModal extends PureComponent {
   }
 
   _didChange () {
-    const isValid = this._envEditor.isValid();
+    this._saveChanges();
 
+    // Call this last in case component unmounted
+    const isValid = this.environmentEditorRef ? this.environmentEditorRef.isValid() : false;
     if (this.state.isValid !== isValid) {
       this.setState({isValid});
     }
-
-    this._saveChanges();
   }
 
-  _getActiveEnvironment () {
-    const {activeEnvironmentId, subEnvironments, rootEnvironment} = this.state;
-    if (rootEnvironment && rootEnvironment._id === activeEnvironmentId) {
+  _getActiveEnvironment (): Environment | null {
+    const {selectedEnvironmentId, subEnvironments, rootEnvironment} = this.state;
+    if (rootEnvironment && rootEnvironment._id === selectedEnvironmentId) {
       return rootEnvironment;
     } else {
-      return subEnvironments.find(e => e._id === activeEnvironmentId);
+      return subEnvironments.find(e => e._id === selectedEnvironmentId) || null;
     }
   }
 
-  _handleUnsetColor (environment) {
+  _handleUnsetColor (environment: Environment) {
     this._handleChangeEnvironmentColor(environment, null);
   }
 
-  async _handleClickColorChange (environment, e) {
+  componentDidMount () {
+    db.onChange(async changes => {
+      const {selectedEnvironmentId} = this.state;
+
+      for (const change of changes) {
+        const [
+          _, // eslint-disable-line no-unused-vars
+          doc,
+          fromSync
+        ] = change;
+
+        // Force an editor refresh if any changes from sync come in
+        if (doc._id === selectedEnvironmentId && fromSync) {
+          this.editorKey = doc.modified;
+          await this._load(this.state.workspace);
+        }
+      }
+    });
+  }
+
+  async _handleClickColorChange (environment: Environment) {
     let el = document.querySelector('#env-color-picker');
 
     if (!el) {
       el = document.createElement('input');
       el.id = 'env-color-picker';
       el.type = 'color';
-      document.body.appendChild(el);
+      document.body && document.body.appendChild(el);
     }
 
     let color = environment.color || '#7d69cb';
@@ -180,9 +251,11 @@ class WorkspaceEnvironmentsEditModal extends PureComponent {
       await this._handleChangeEnvironmentColor(environment, color);
     }
 
-    el.value = color;
-    el.addEventListener('input', e => {
-      this._handleChangeEnvironmentColor(environment, e.target.value);
+    el.setAttribute('value', color);
+    el.addEventListener('input', (e: Event) => {
+      if (e.target instanceof HTMLInputElement) {
+        this._handleChangeEnvironmentColor(environment, e.target && e.target.value);
+      }
     });
 
     el.click();
@@ -190,14 +263,26 @@ class WorkspaceEnvironmentsEditModal extends PureComponent {
 
   _saveChanges () {
     // Only save if it's valid
-    if (!this._envEditor.isValid()) {
+    if (!this.environmentEditorRef || !this.environmentEditorRef.isValid()) {
       return;
     }
 
-    const data = this._envEditor.getValue();
+    let data;
+    try {
+      data = this.environmentEditorRef.getValue();
+    } catch (err) {
+      // Invalid JSON probably
+      return;
+    }
+
     const activeEnvironment = this._getActiveEnvironment();
 
-    models.environment.update(activeEnvironment, {data});
+    if (activeEnvironment) {
+      clearTimeout(this.saveTimeout);
+      this.saveTimeout = setTimeout(() => {
+        models.environment.update(activeEnvironment, {data});
+      }, DEBOUNCE_MILLIS * 4);
+    }
   }
 
   render () {
@@ -207,7 +292,8 @@ class WorkspaceEnvironmentsEditModal extends PureComponent {
       editorKeyMap,
       lineWrapping,
       render,
-      getRenderContext
+      getRenderContext,
+      nunjucksPowerUserMode
     } = this.props;
 
     const {
@@ -284,11 +370,12 @@ class WorkspaceEnvironmentsEditModal extends PureComponent {
               <h1>
                 <Editable singleClick
                           className="wide"
-                          onSubmit={name => this._handleChangeEnvironmentName(activeEnvironment, name)}
+                          onSubmit={
+                            name => activeEnvironment && this._handleChangeEnvironmentName(activeEnvironment, name)}
                           value={activeEnvironment ? activeEnvironment.name : ''}/>
               </h1>
 
-              {activeEnvironment && rootEnvironment !== activeEnvironment && (
+              {activeEnvironment && rootEnvironment !== activeEnvironment ? (
                 <Dropdown className="space-right" right>
                   <DropdownButton className="btn btn--clicky">
                     {activeEnvironment.color && (
@@ -310,16 +397,16 @@ class WorkspaceEnvironmentsEditModal extends PureComponent {
                     Unset Color
                   </DropdownItem>
                 </Dropdown>
-              )}
+              ) : null}
 
-              {activeEnvironment && rootEnvironment !== activeEnvironment && (
+              {activeEnvironment && rootEnvironment !== activeEnvironment ? (
                 <PromptButton
                   value={activeEnvironment}
                   onClick={this._handleDeleteEnvironment}
                   className="btn btn--clicky">
                   <i className="fa fa-trash-o"/>
                 </PromptButton>
-              )}
+              ) : null}
             </div>
             <div className="env-modal__editor">
               <EnvironmentEditor
@@ -328,11 +415,12 @@ class WorkspaceEnvironmentsEditModal extends PureComponent {
                 editorKeyMap={editorKeyMap}
                 lineWrapping={lineWrapping}
                 ref={this._setEditorRef}
-                key={activeEnvironment ? activeEnvironment._id : 'n/a'}
+                key={`${this.editorKey}::${activeEnvironment ? activeEnvironment._id : 'n/a'}`}
                 environment={activeEnvironment ? activeEnvironment.data : {}}
                 didChange={this._didChange}
                 render={render}
                 getRenderContext={getRenderContext}
+                nunjucksPowerUserMode={nunjucksPowerUserMode}
               />
             </div>
           </div>
@@ -340,7 +428,7 @@ class WorkspaceEnvironmentsEditModal extends PureComponent {
         <ModalFooter>
           <div className="margin-left italic txt-sm tall">
             * Environment data can be used for&nbsp;
-            <Link href="https://insomnia.rest/documentation/templating/">
+            <Link href="https://support.insomnia.rest/article/40-template-tags">
               Nunjucks Templating
             </Link> in your requests
           </div>
@@ -353,16 +441,4 @@ class WorkspaceEnvironmentsEditModal extends PureComponent {
   }
 }
 
-WorkspaceEnvironmentsEditModal.propTypes = {
-  onChange: PropTypes.func.isRequired,
-  editorFontSize: PropTypes.number.isRequired,
-  editorIndentSize: PropTypes.number.isRequired,
-  editorKeyMap: PropTypes.string.isRequired,
-  render: PropTypes.func.isRequired,
-  getRenderContext: PropTypes.func.isRequired,
-  lineWrapping: PropTypes.bool.isRequired
-};
-
 export default WorkspaceEnvironmentsEditModal;
-
-export let show = null;

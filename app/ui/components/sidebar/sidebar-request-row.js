@@ -1,4 +1,5 @@
-import React, {PropTypes, PureComponent} from 'react';
+import React, {PureComponent} from 'react';
+import PropTypes from 'prop-types';
 import autobind from 'autobind-decorator';
 import ReactDOM from 'react-dom';
 import {DragSource, DropTarget} from 'react-dnd';
@@ -94,7 +95,7 @@ class SidebarRequestRow extends PureComponent {
     if (!request) {
       node = (
         <li className={classes}>
-          <div className="sidebar__item" tabIndex={0}>
+          <div className="sidebar__item">
             <button className="sidebar__clickable" onClick={this._handleRequestCreateFromEmpty}>
               <em className="faded">click to add first request...</em>
             </button>

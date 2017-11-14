@@ -1,4 +1,5 @@
 import {createSelector} from 'reselect';
+import {fuzzyMatch} from '../../common/misc';
 
 // ~~~~~~~~~ //
 // Selectors //
@@ -24,6 +25,14 @@ export const selectActiveWorkspace = createSelector(
   state => state.global.activeWorkspaceId,
   (workspaces, entities, activeWorkspaceId) => {
     return entities.workspaces[activeWorkspaceId] || workspaces[0];
+  }
+);
+
+export const selectActiveWorkspaceClientCertificates = createSelector(
+  selectEntitiesLists,
+  selectActiveWorkspace,
+  (entities, activeWorkspace) => {
+    return entities.clientCertificates.filter(c => c.parentId === activeWorkspace._id);
   }
 );
 
@@ -106,13 +115,13 @@ export const selectSidebarChildren = createSelector(
         // Build the monster string to match on
         const method = child.doc.method || '';
         const name = child.doc.name;
-        const toMatch = `${method}❅${name}❅${parentNames.join('❅')}`.toLowerCase();
+        const toMatch = `${method}❅${name}❅${parentNames.join('❅')}`;
 
         // Try to match name
         let hasMatchedName = true;
-        for (const token of sidebarFilter.trim().toLowerCase().split(' ')) {
+        for (const token of sidebarFilter.trim().split(' ')) {
           // Filter failed. Don't render children
-          if (toMatch.indexOf(token) === -1) {
+          if (!fuzzyMatch(token, toMatch)) {
             hasMatchedName = false;
             break;
           }
@@ -159,6 +168,15 @@ export const selectActiveRequest = createSelector(
   (entities, workspaceMeta) => {
     const id = workspaceMeta ? workspaceMeta.activeRequestId : 'n/a';
     return entities.requests[id] || null;
+  }
+);
+
+export const selectActiveCookieJar = createSelector(
+  selectEntitiesLists,
+  selectActiveWorkspace,
+  (entities, workspace) => {
+    const cookieJar = entities.cookieJars.find(cj => cj.parentId === workspace._id);
+    return cookieJar || null;
   }
 );
 

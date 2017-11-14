@@ -27,10 +27,11 @@ describe('ResponseExtension General', async () => {
   });
 
   it('fails on empty filter', async () => {
-    await models.response.create({parentId: 'req_test'}, '{"foo": "bar"}');
+    const request = await models.request.create({parentId: 'foo'});
+    await models.response.create({parentId: request._id, statusCode: 200}, '{"foo": "bar"}');
 
     try {
-      await templating.render(`{% response "body", "req_test", "" %}`);
+      await templating.render(`{% response "body", "${request._id}", "" %}`);
       fail('Should have failed');
     } catch (err) {
       expect(err.message).toContain('No body filter specified');
@@ -115,7 +116,7 @@ describe('ResponseExtension JSONPath', async () => {
 
 describe('ResponseExtension XPath', async () => {
   beforeEach(globalBeforeEach);
-  it('renders basic response "body", query', async () => {
+  it('renders basic response "body" query', async () => {
     const request = await models.request.create({parentId: 'foo'});
     await models.response.create({
       parentId: request._id,
@@ -125,6 +126,18 @@ describe('ResponseExtension XPath', async () => {
     const result = await templating.render(`{% response "body", "${request._id}", "/foo/bar" %}`);
 
     expect(result).toBe('Hello World!');
+  });
+
+  it('renders basic response "body" attribute query', async () => {
+    const request = await models.request.create({parentId: 'foo'});
+    await models.response.create({
+      parentId: request._id,
+      statusCode: 200
+    }, '<foo><bar hello="World!">Hello World!</bar></foo>');
+
+    const result = await templating.render(`{% response "body", "${request._id}", "/foo/bar/@hello" %}`);
+
+    expect(result).toBe('World!');
   });
 
   it('no results on invalid XML', async () => {
@@ -228,7 +241,7 @@ describe('ResponseExtension Header', async () => {
       await templating.render(`{% response "header", "${request._id}", "dne" %}`);
       fail('should have failed');
     } catch (err) {
-      expect(err.message).toContain('No match for header: dne');
+      expect(err.message).toBe('No header with name "dne".\nChoices are [\n\t"Content-Type",\n\t"Content-Length"\n]');
     }
   });
 });

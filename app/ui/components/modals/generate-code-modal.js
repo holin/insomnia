@@ -1,6 +1,7 @@
-import React, {PureComponent, PropTypes} from 'react';
+import React, {PureComponent} from 'react';
+import PropTypes from 'prop-types';
 import autobind from 'autobind-decorator';
-import HTTPSnippet, {availableTargets} from 'httpsnippet';
+import HTTPSnippet, {availableTargets} from 'insomnia-httpsnippet';
 import CopyButton from '../base/copy-button';
 import {Dropdown, DropdownButton, DropdownItem} from '../base/dropdown';
 import CodeEditor from '../codemirror/code-editor';
@@ -8,7 +9,7 @@ import Modal from '../base/modal';
 import ModalBody from '../base/modal-body';
 import ModalHeader from '../base/modal-header';
 import ModalFooter from '../base/modal-footer';
-import {exportHar} from '../../../common/har';
+import {exportHarRequest} from '../../../common/har';
 import {trackEvent} from '../../../analytics/index';
 import Link from '../base/link';
 
@@ -88,7 +89,7 @@ class GenerateCodeModal extends PureComponent {
     const addContentLength = (TO_ADD_CONTENT_LENGTH[target.key] || []).find(c => c === client.key);
 
     const {environmentId} = this.props;
-    const har = await exportHar(request._id, environmentId, addContentLength);
+    const har = await exportHarRequest(request._id, environmentId, addContentLength);
     const snippet = new HTTPSnippet(har);
     const cmd = snippet.convert(target.key, client.key);
 

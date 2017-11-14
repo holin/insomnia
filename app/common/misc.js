@@ -8,6 +8,7 @@ import * as querystring from './querystring';
 import {shell} from 'electron';
 
 const URL_PATH_CHARACTER_WHITELIST = '+,;@=:';
+const ESCAPE_REGEX_MATCH = /[-[\]/{}()*+?.\\^$|]/g;
 
 type Header = {
   name: string,
@@ -62,12 +63,26 @@ export function hasUserAgentHeader<T: Header> (headers: Array<T>): boolean {
   return filterHeaders(headers, 'user-agent').length > 0;
 }
 
+export function hasAcceptEncodingHeader<T: Header> (headers: Array<T>): boolean {
+  return filterHeaders(headers, 'accept-encoding').length > 0;
+}
+
 export function getSetCookieHeaders<T: Header> (headers: Array<T>): Array<T> {
   return filterHeaders(headers, 'set-cookie');
 }
 
+export function getLocationHeader<T: Header> (headers: Array<T>): T | null {
+  const matches = filterHeaders(headers, 'location');
+  return matches.length ? matches[0] : null;
+}
+
 export function getContentTypeHeader<T: Header> (headers: Array<T>): T | null {
   const matches = filterHeaders(headers, 'content-type');
+  return matches.length ? matches[0] : null;
+}
+
+export function getContentDispositionHeader<T: Header> (headers: Array<T>): T | null {
+  const matches = filterHeaders(headers, 'content-disposition');
   return matches.length ? matches[0] : null;
 }
 
@@ -109,45 +124,33 @@ export function flexibleEncodeComponent (str: string, ignore: string = ''): stri
   // Sometimes spaces screw things up because of url.parse
   str = str.replace(/%20/g, ' ');
 
-  const ignoredChars = ignore.split('');
+  // Handle all already-encoded characters so we don't touch them
+  str = str.replace(/%([0-9a-fA-F]{2})/g, '__ENC__$1');
 
   // Do a special encode of ignored chars, so they aren't touched.
   // This first pass, surrounds them with a special tag (anything unique
   // will work), so it can change them back later
   // Example: will replace %40 with __LEAVE_40_LEAVE__, and we'll change
   // it back to %40 at the end.
-  for (const c of ignoredChars) {
+  for (const c of ignore) {
     const code = encodeURIComponent(c).replace('%', '');
-
-    // Replace encoded versions
-    const re = new RegExp(encodeURIComponent(c), 'g');
-    str = str.replace(re, `__ENCODED_${code}_ENCODED__`);
-
-    // Replace raw versions
-    const re2 = new RegExp(`[${c}]`, 'g');
-    str = str.replace(re2, `__RAW_${code}_RAW__`);
-  }
-
-  try {
-    str = decodeURIComponent(str);
-  } catch (e) {
-    // Malformed (probably not encoded) so assume it's decoded already
+    const re2 = new RegExp(escapeRegex(c), 'g');
+    str = str.replace(re2, `__RAW__${code}`);
   }
 
   // Encode it
   str = encodeURIComponent(str);
 
+  // Put back the raw version of the ignored chars
+  for (const match of str.match(/__RAW__([0-9a-fA-F]{2})/g) || []) {
+    const code = match.replace('__RAW__', '');
+    str = str.replace(match, decodeURIComponent(`%${code}`));
+  }
+
   // Put back the encoded version of the ignored chars
-  for (const c of ignoredChars) {
-    const code = encodeURIComponent(c).replace('%', '');
-
-    // Put back encoded versions
-    const re = new RegExp(`__ENCODED_${code}_ENCODED__`, 'g');
-    str = str.replace(re, encodeURIComponent(c));
-
-    // Put back raw versions
-    const re2 = new RegExp(`__RAW_${code}_RAW__`, 'g');
-    str = str.replace(re2, c);
+  for (const match of str.match(/__ENC__([0-9a-fA-F]{2})/g) || []) {
+    const code = match.replace('__ENC__', '');
+    str = str.replace(match, `%${code}`);
   }
 
   return str;
@@ -315,4 +318,31 @@ export function jsonParseOr (str: string, fallback: any): any {
   } catch (err) {
     return fallback;
   }
+}
+
+/**
+ * Escape a dynamic string for use inside of a regular expression
+ * @param str - string to escape
+ * @returns {string} escaped string
+ */
+export function escapeRegex (str: string): string {
+  return str.replace(ESCAPE_REGEX_MATCH, '\\$&');
+}
+
+export function fuzzyMatch (searchString: string, text: string): boolean {
+  const lowercase = searchString.toLowerCase();
+
+  // Split into individual chars, then escape the ones that need it.
+  const regexSearchString = lowercase.split('').map(v => escapeRegex(v)).join('.*');
+
+  let toMatch;
+  try {
+    toMatch = new RegExp(regexSearchString);
+  } catch (err) {
+    console.warn('Invalid regex', searchString, regexSearchString);
+    // Invalid regex somehow
+    return false;
+  }
+
+  return toMatch.test(text.toLowerCase());
 }

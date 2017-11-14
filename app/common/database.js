@@ -40,7 +40,11 @@ function getDBFilePath (modelType) {
  * @param forceReset
  * @returns {null}
  */
-export function init (types: Array<string>, config: Object = {}, forceReset: boolean = false) {
+export async function init (
+  types: Array<string>,
+  config: Object = {},
+  forceReset: boolean = false
+) {
   if (forceReset) {
     changeListeners = [];
     db = {};
@@ -155,16 +159,17 @@ export function findMostRecentlyModified (
   limit: number | null = null
 ): Promise<Array<BaseModel>> {
   return new Promise(resolve => {
-    db[type].find(query).sort({modified: -1}).limit(limit).exec((err, rawDocs) => {
+    db[type].find(query).sort({modified: -1}).limit(limit).exec(async (err, rawDocs) => {
       if (err) {
         console.warn('[db] Failed to find docs', err);
         resolve([]);
         return;
       }
 
-      const docs = rawDocs.map(rawDoc => {
-        return initModel(type, rawDoc);
-      });
+      const docs = [];
+      for (const rawDoc of rawDocs) {
+        docs.push(await initModel(type, rawDoc));
+      }
 
       resolve(docs);
     });
@@ -177,14 +182,15 @@ export function find<T: BaseModel> (
   sort: Object = {created: 1}
 ): Promise<Array<T>> {
   return new Promise((resolve, reject) => {
-    db[type].find(query).sort(sort).exec((err, rawDocs) => {
+    db[type].find(query).sort(sort).exec(async (err, rawDocs) => {
       if (err) {
         return reject(err);
       }
 
-      const docs = rawDocs.map(rawDoc => {
-        return initModel(type, rawDoc);
-      });
+      const docs = [];
+      for (const rawDoc of rawDocs) {
+        docs.push(await initModel(type, rawDoc));
+      }
 
       resolve(docs);
     });
@@ -231,30 +237,33 @@ export async function upsert (doc: BaseModel, fromSync: boolean = false): Promis
 }
 
 export function insert<T: BaseModel> (doc: T, fromSync: boolean = false): Promise<T> {
-  return new Promise((resolve, reject) => {
-    const docWithDefaults = initModel(doc.type, doc);
+  return new Promise(async (resolve, reject) => {
+    const docWithDefaults = await initModel(doc.type, doc);
     db[doc.type].insert(docWithDefaults, (err, newDoc) => {
       if (err) {
         return reject(err);
       }
 
-      notifyOfChange(CHANGE_INSERT, newDoc, fromSync);
       resolve(newDoc);
+
+      // NOTE: This needs to be after we resolve
+      notifyOfChange(CHANGE_INSERT, newDoc, fromSync);
     });
   });
 }
 
 export function update<T: BaseModel> (doc: T, fromSync: boolean = false): Promise<T> {
-  return new Promise((resolve, reject) => {
-    const docWithDefaults = initModel(doc.type, doc);
+  return new Promise(async (resolve, reject) => {
+    const docWithDefaults = await initModel(doc.type, doc);
     db[doc.type].update({_id: docWithDefaults._id}, docWithDefaults, err => {
       if (err) {
         return reject(err);
       }
 
-      notifyOfChange(CHANGE_UPDATE, docWithDefaults, fromSync);
-
       resolve(docWithDefaults);
+
+      // NOTE: This needs to be after we resolve
+      notifyOfChange(CHANGE_UPDATE, docWithDefaults, fromSync);
     });
   });
 }
@@ -295,8 +304,8 @@ export async function removeWhere (type: string, query: Object): Promise<void> {
 // DEFAULT MODEL STUFF //
 // ~~~~~~~~~~~~~~~~~~~ //
 
-export function docUpdate<T: BaseModel> (originalDoc: T, patch: Object = {}): Promise<T> {
-  const doc = initModel(
+export async function docUpdate<T: BaseModel> (originalDoc: T, patch: Object = {}): Promise<T> {
+  const doc = await initModel(
     originalDoc.type,
     originalDoc,
 
@@ -309,8 +318,27 @@ export function docUpdate<T: BaseModel> (originalDoc: T, patch: Object = {}): Pr
   return update(doc);
 }
 
-export function docCreate<T: BaseModel> (type: string, ...patches: Array<Object>): Promise<T> {
-  const doc = initModel(
+export async function docCreateNoMigrate<T: BaseModel> (
+  type: string,
+  ...patches: Array<Object>
+): Promise<T> {
+  const doc = await initModel(
+    type,
+    ...patches,
+
+    // Fields that the user can't touch
+    {type: type},
+    {__NO_MIGRATE: true}
+  );
+
+  return insert(doc);
+}
+
+export async function docCreate<T: BaseModel> (
+  type: string,
+  ...patches: Array<Object>
+): Promise<T> {
+  const doc = await initModel(
     type,
     ...patches,
 
@@ -403,7 +431,7 @@ export async function duplicate<T: BaseModel> (originalDoc: T, patch: Object = {
     delete newDoc.created;
     delete newDoc.modified;
 
-    const createdDoc = await docCreate(newDoc.type, newDoc);
+    const createdDoc = await docCreateNoMigrate(newDoc.type, newDoc);
 
     // 2. Get all the children
     for (const type of allTypes()) {

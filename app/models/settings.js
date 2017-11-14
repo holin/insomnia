@@ -19,8 +19,10 @@ type BaseSettings = {
   forceVerticalLayout: boolean,
   autoHideMenuBar: boolean,
   theme: string,
+  maxRedirects: number,
   disableAnalyticsTracking: boolean,
-  pluginPath: string
+  pluginPath: string,
+  nunjucksPowerUserMode: boolean
 };
 
 export type Settings = BaseModel & Settings;
@@ -42,6 +44,7 @@ export function init (): BaseSettings {
     httpProxy: '',
     httpsProxy: '',
     noProxy: '',
+    maxRedirects: -1,
     proxyEnabled: false,
     timeout: 0,
     validateSSL: true,
@@ -49,7 +52,8 @@ export function init (): BaseSettings {
     autoHideMenuBar: false,
     theme: 'default',
     disableAnalyticsTracking: false,
-    pluginPath: ''
+    pluginPath: '',
+    nunjucksPowerUserMode: false
   };
 }
 

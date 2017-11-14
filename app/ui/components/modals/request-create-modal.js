@@ -28,13 +28,16 @@ class RequestCreateModal extends PureComponent {
 
   _setInputRef (n) {
     this._input = n;
+    if (this._input) {
+      this._input.value = 'My Request';
+    }
   }
 
   async _handleSubmit (e) {
     e.preventDefault();
 
     const {parentId, selectedContentType, selectedMethod} = this.state;
-    const request = models.initModel(models.request.type, {
+    const request = await models.initModel(models.request.type, {
       parentId,
       name: this._input.value,
       method: selectedMethod
@@ -76,14 +79,13 @@ class RequestCreateModal extends PureComponent {
   }
 
   show ({parentId, onComplete}) {
-    this.modal.show();
-
-    this._input.value = 'My Request';
     this.setState({
       parentId,
       selectedContentType: null,
       selectedMethod: METHOD_GET
     });
+
+    this.modal.show();
 
     // Need to do this after render because modal focuses itself too
     setTimeout(() => {

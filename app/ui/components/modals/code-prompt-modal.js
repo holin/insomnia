@@ -1,4 +1,5 @@
-import React, {PropTypes, PureComponent} from 'react';
+import React, {PureComponent} from 'react';
+import PropTypes from 'prop-types';
 import autobind from 'autobind-decorator';
 import Modal from '../base/modal';
 import ModalBody from '../base/modal-body';
@@ -64,8 +65,6 @@ class CodePromptModal extends PureComponent {
       onModeChange
     } = options;
 
-    this.modal.show();
-
     this._onChange = onChange;
     this._onModeChange = onModeChange;
 
@@ -78,11 +77,14 @@ class CodePromptModal extends PureComponent {
       enableRender,
       mode: mode || this.state.mode
     });
+
+    this.modal.show();
   }
 
   render () {
     const {
       handleGetRenderContext,
+      nunjucksPowerUserMode,
       handleRender,
       editorKeyMap,
       editorIndentSize,
@@ -129,6 +131,7 @@ class CodePromptModal extends PureComponent {
                   defaultValue={defaultValue}
                   placeholder={placeholder}
                   onChange={this._handleChange}
+                  nunjucksPowerUserMode={nunjucksPowerUserMode}
                   getRenderContext={enableRender ? handleGetRenderContext : null}
                   render={enableRender ? handleRender : null}
                   mode={mode}
@@ -171,6 +174,7 @@ CodePromptModal.propTypes = {
   editorIndentSize: PropTypes.number.isRequired,
   editorKeyMap: PropTypes.string.isRequired,
   editorLineWrapping: PropTypes.bool.isRequired,
+  nunjucksPowerUserMode: PropTypes.bool.isRequired,
 
   // Optional
   handleGetRenderContext: PropTypes.func,

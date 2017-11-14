@@ -1,4 +1,5 @@
-import React, {PureComponent, PropTypes} from 'react';
+import React, {PureComponent} from 'react';
+import PropTypes from 'prop-types';
 import autobind from 'autobind-decorator';
 import VariableEditor from '../templating/variable-editor';
 import TagEditor from '../templating/tag-editor';
@@ -78,6 +79,7 @@ class NunjucksModal extends PureComponent {
           onChange={this._handleTemplateChange}
           defaultValue={defaultTemplate}
           handleRender={handleRender}
+          handleGetRenderContext={handleGetRenderContext}
           workspace={workspace}
         />
       );

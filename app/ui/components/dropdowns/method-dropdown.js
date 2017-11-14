@@ -1,4 +1,5 @@
-import React, {PropTypes, PureComponent} from 'react';
+import React, {PureComponent} from 'react';
+import PropTypes from 'prop-types';
 import autobind from 'autobind-decorator';
 import {Dropdown, DropdownButton, DropdownDivider, DropdownItem} from '../base/dropdown';
 import * as constants from '../../../common/constants';
@@ -9,6 +10,10 @@ const LOCALSTORAGE_KEY = 'insomnia.httpMethods';
 
 @autobind
 class MethodDropdown extends PureComponent {
+  _setDropdownRef (n) {
+    this._dropdown = n;
+  }
+
   _handleSetCustomMethod () {
     let recentMethods;
     try {
@@ -61,6 +66,10 @@ class MethodDropdown extends PureComponent {
     trackEvent('Request', 'Set Method', method);
   }
 
+  toggle () {
+    this._dropdown && this._dropdown.toggle(true);
+  }
+
   render () {
     const {
       method,
@@ -69,7 +78,7 @@ class MethodDropdown extends PureComponent {
       ...extraProps
     } = this.props;
     return (
-      <Dropdown className="method-dropdown" right={right}>
+      <Dropdown ref={this._setDropdownRef} className="method-dropdown" right={right}>
         <DropdownButton type="button" {...extraProps}>
           {method} <i className="fa fa-caret-down"/>
         </DropdownButton>

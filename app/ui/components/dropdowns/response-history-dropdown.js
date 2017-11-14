@@ -1,4 +1,5 @@
-import React, {PropTypes, PureComponent} from 'react';
+import React, {PureComponent} from 'react';
+import PropTypes from 'prop-types';
 import autobind from 'autobind-decorator';
 import {Dropdown, DropdownButton, DropdownDivider, DropdownItem} from '../base/dropdown';
 import SizeTag from '../tags/size-tag';
@@ -6,9 +7,16 @@ import StatusTag from '../tags/status-tag';
 import TimeTag from '../tags/time-tag';
 import PromptButton from '../base/prompt-button';
 import {trackEvent} from '../../../analytics/index';
+import KeydownBinder from '../keydown-binder';
+import * as hotkeys from '../../../common/hotkeys';
+import {executeHotKey} from '../../../common/hotkeys';
 
 @autobind
 class ResponseHistoryDropdown extends PureComponent {
+  _setDropdownRef (n) {
+    this._dropdown = n;
+  }
+
   _handleDeleteResponses () {
     trackEvent('History', 'Delete Responses');
     this.props.handleDeleteResponses(this.props.requestId);
@@ -22,6 +30,12 @@ class ResponseHistoryDropdown extends PureComponent {
   _handleSetActiveResponse (response) {
     trackEvent('History', 'Activate Response');
     this.props.handleSetActiveResponse(response);
+  }
+
+  _handleKeydown (e) {
+    executeHotKey(e, hotkeys.TOGGLE_HISTORY_DROPDOWN, () => {
+      this._dropdown && this._dropdown.toggle(true);
+    });
   }
 
   componentWillUnmount () {
@@ -48,7 +62,7 @@ class ResponseHistoryDropdown extends PureComponent {
           statusMessage={response.statusMessage || null}
         />
         <TimeTag milliseconds={response.elapsedTime} small/>
-        <SizeTag bytes={response.bytesRead} small/>
+        <SizeTag bytesRead={response.bytesRead} bytesContent={response.bytesContent} small/>
         {!response.requestVersionId && <i className="icon fa fa-info-circle" title={message}/>}
       </DropdownItem>
     );
@@ -67,28 +81,31 @@ class ResponseHistoryDropdown extends PureComponent {
     const isLatestResponseActive = !responses.length || activeResponse._id === responses[0]._id;
 
     return (
-      <Dropdown key={activeResponse ? activeResponse._id : 'n/a'} {...extraProps}>
-        <DropdownButton className="btn btn--super-compact tall">
-          {isLatestResponseActive
-            ? <i className="fa fa-history"/>
-            : <i className="fa fa-thumb-tack"/>}
-        </DropdownButton>
-        <DropdownDivider>Response History</DropdownDivider>
-        <DropdownItem buttonClass={PromptButton}
-                      addIcon
-                      onClick={this._handleDeleteResponse}>
-          <i className="fa fa-trash-o"/>
-          Delete Current Response
-        </DropdownItem>
-        <DropdownItem buttonClass={PromptButton}
-                      addIcon
-                      onClick={this._handleDeleteResponses}>
-          <i className="fa fa-trash-o"/>
-          Clear History
-        </DropdownItem>
-        <DropdownDivider>Past Responses</DropdownDivider>
-        {responses.map(this.renderDropdownItem)}
-      </Dropdown>
+      <KeydownBinder onKeydown={this._handleKeydown}>
+        <Dropdown ref={this._setDropdownRef}
+                  key={activeResponse ? activeResponse._id : 'n/a'} {...extraProps}>
+          <DropdownButton className="btn btn--super-compact tall">
+            {isLatestResponseActive
+              ? <i className="fa fa-history"/>
+              : <i className="fa fa-thumb-tack"/>}
+          </DropdownButton>
+          <DropdownDivider>Response History</DropdownDivider>
+          <DropdownItem buttonClass={PromptButton}
+                        addIcon
+                        onClick={this._handleDeleteResponse}>
+            <i className="fa fa-trash-o"/>
+            Delete Current Response
+          </DropdownItem>
+          <DropdownItem buttonClass={PromptButton}
+                        addIcon
+                        onClick={this._handleDeleteResponses}>
+            <i className="fa fa-trash-o"/>
+            Clear History
+          </DropdownItem>
+          <DropdownDivider>Past Responses</DropdownDivider>
+          {responses.map(this.renderDropdownItem)}
+        </Dropdown>
+      </KeydownBinder>
     );
   }
 }

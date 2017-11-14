@@ -1,4 +1,5 @@
-import React, {PropTypes, PureComponent} from 'react';
+import React, {PureComponent} from 'react';
+import PropTypes from 'prop-types';
 import autobind from 'autobind-decorator';
 import {remote} from 'electron';
 import {DEBOUNCE_MILLIS, isMac} from '../../common/constants';
@@ -8,6 +9,9 @@ import {showPrompt} from './modals/index';
 import MethodDropdown from './dropdowns/method-dropdown';
 import PromptButton from './base/prompt-button';
 import OneLineEditor from './codemirror/one-line-editor';
+import {executeHotKey} from '../../common/hotkeys';
+import * as hotkeys from '../../common/hotkeys';
+import KeydownBinder from './keydown-binder';
 
 @autobind
 class RequestUrlBar extends PureComponent {
@@ -25,6 +29,10 @@ class RequestUrlBar extends PureComponent {
 
   _setDropdownRef (n) {
     this._dropdown = n;
+  }
+
+  _setMethodDropdownRef (n) {
+    this._methodDropdown = n;
   }
 
   _setInputRef (n) {
@@ -108,13 +116,25 @@ class RequestUrlBar extends PureComponent {
       return;
     }
 
-    // meta+l
-    const metaPressed = isMac() ? e.metaKey : e.ctrlKey;
-    if (metaPressed && e.keyCode === 76) {
-      e.preventDefault();
+    executeHotKey(e, hotkeys.FOCUS_URL, () => {
+      if (!this._input) {
+        return;
+      }
+
       this._input.focus();
       this._input.selectAll();
-    }
+    });
+
+    executeHotKey(e, hotkeys.TOGGLE_METHOD_DROPDOWN, () => {
+      if (!this._methodDropdown) {
+        return;
+      }
+      this._methodDropdown.toggle();
+    });
+
+    executeHotKey(e, hotkeys.SHOW_SEND_OPTIONS, () => {
+      this._dropdown.toggle(true);
+    });
   }
 
   _handleSend () {
@@ -200,14 +220,6 @@ class RequestUrlBar extends PureComponent {
     this._handleFormSubmit(e);
   }
 
-  componentDidMount () {
-    document.body.addEventListener('keydown', this._handleKeyDown);
-  }
-
-  componentWillUnmount () {
-    document.body.removeEventListener('keydown', this._handleKeyDown);
-  }
-
   componentWillReceiveProps (nextProps) {
     if (nextProps.requestId !== this.props.requestId) {
       this._handleResetTimeouts();
@@ -251,7 +263,7 @@ class RequestUrlBar extends PureComponent {
           <DropdownDivider>Basic</DropdownDivider>
           <DropdownItem type="submit">
             <i className="fa fa-arrow-circle-o-right"/> Send Now
-            <DropdownHint char="Enter"/>
+            <DropdownHint hotkey={hotkeys.SEND_REQUEST}/>
           </DropdownItem>
           <DropdownItem onClick={this._handleGenerateCode}>
             <i className="fa fa-code"/> Generate Client Code
@@ -289,32 +301,38 @@ class RequestUrlBar extends PureComponent {
       url,
       method,
       handleRender,
+      nunjucksPowerUserMode,
       handleGetRenderContext,
       handleAutocompleteUrls,
       uniquenessKey
     } = this.props;
 
     return (
-      <div className="urlbar">
-        <MethodDropdown onChange={this._handleMethodChange} method={method}>
-          {method} <i className="fa fa-caret-down"/>
-        </MethodDropdown>
-        <form onSubmit={this._handleFormSubmit}>
-          <OneLineEditor
-            key={uniquenessKey}
-            ref={this._setInputRef}
-            onPaste={this._handleUrlPaste}
-            forceEditor
-            type="text"
-            render={handleRender}
-            getAutocompleteConstants={handleAutocompleteUrls}
-            getRenderContext={handleGetRenderContext}
-            placeholder="https://api.myproduct.com/v1/users"
-            defaultValue={url}
-            onChange={this._handleUrlChange}/>
-          {this.renderSendButton()}
-        </form>
-      </div>
+      <KeydownBinder onKeydown={this._handleKeyDown}>
+        <div className="urlbar">
+          <MethodDropdown ref={this._setMethodDropdownRef}
+                          onChange={this._handleMethodChange}
+                          method={method}>
+            {method} <i className="fa fa-caret-down"/>
+          </MethodDropdown>
+          <form onSubmit={this._handleFormSubmit}>
+            <OneLineEditor
+              key={uniquenessKey}
+              ref={this._setInputRef}
+              onPaste={this._handleUrlPaste}
+              forceEditor
+              type="text"
+              render={handleRender}
+              nunjucksPowerUserMode={nunjucksPowerUserMode}
+              getAutocompleteConstants={handleAutocompleteUrls}
+              getRenderContext={handleGetRenderContext}
+              placeholder="https://api.myproduct.com/v1/users"
+              defaultValue={url}
+              onChange={this._handleUrlChange}/>
+            {this.renderSendButton()}
+          </form>
+        </div>
+      </KeydownBinder>
     );
   }
 }
@@ -330,6 +348,7 @@ RequestUrlBar.propTypes = {
   onMethodChange: PropTypes.func.isRequired,
   handleGenerateCode: PropTypes.func.isRequired,
   url: PropTypes.string.isRequired,
+  nunjucksPowerUserMode: PropTypes.bool.isRequired,
   method: PropTypes.string.isRequired,
   requestId: PropTypes.string.isRequired,
   uniquenessKey: PropTypes.string.isRequired

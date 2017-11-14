@@ -1,4 +1,5 @@
-import React, {PropTypes, PureComponent} from 'react';
+import React, {PureComponent} from 'react';
+import PropTypes from 'prop-types';
 import autobind from 'autobind-decorator';
 import EnvironmentEditor from '../editors/environment-editor';
 import Modal from '../base/modal';
@@ -46,17 +47,12 @@ class EnvironmentEditModal extends PureComponent {
   }
 
   show (requestGroup) {
-    this.modal.show();
     this.setState({requestGroup});
+    this.modal.show();
   }
 
   hide () {
     this.modal.hide();
-  }
-
-  toggle (requestGroup) {
-    this.modal.toggle();
-    this.setState({requestGroup});
   }
 
   render () {
@@ -67,6 +63,7 @@ class EnvironmentEditModal extends PureComponent {
       lineWrapping,
       render,
       getRenderContext,
+      nunjucksPowerUserMode,
       ...extraProps
     } = this.props;
 
@@ -90,6 +87,7 @@ class EnvironmentEditModal extends PureComponent {
             didChange={this._didChange}
             render={render}
             getRenderContext={getRenderContext}
+            nunjucksPowerUserMode={nunjucksPowerUserMode}
           />
         </ModalBody>
         <ModalFooter>
@@ -112,6 +110,7 @@ EnvironmentEditModal.propTypes = {
   editorKeyMap: PropTypes.string.isRequired,
   render: PropTypes.func.isRequired,
   getRenderContext: PropTypes.func.isRequired,
+  nunjucksPowerUserMode: PropTypes.bool.isRequired,
   lineWrapping: PropTypes.bool.isRequired
 };
 

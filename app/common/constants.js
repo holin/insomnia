@@ -24,6 +24,11 @@ export function getAppEnvironment () {
   return process.env.INSOMNIA_ENV || 'production';
 }
 
+export function getTempDir () {
+  // NOTE: Using a fairly unique name here because "insomnia" is a common word
+  return path.join(electron.remote.app.getPath('temp'), `insomnia_${getAppVersion()}`);
+}
+
 export function isMac () {
   return getAppPlatform() === 'darwin';
 }
@@ -51,19 +56,19 @@ export const MAX_RESPONSES = 20;
 export const REQUEST_TIME_TO_SHOW_COUNTER = 1; // Seconds
 export const GA_ID = 'UA-86416787-1';
 export const GA_HOST = 'desktop.insomnia.rest';
-export const CHANGELOG_URL = process.env.INSOMNIA_SYNC_URL || 'https://changelog.insomnia.rest/changelog.json';
+export const CHANGELOG_URL = 'https://changelog.insomnia.rest/changelog.json';
 export const CHANGELOG_PAGE = 'https://insomnia.rest/changelog/';
 export const STATUS_CODE_PLUGIN_ERROR = -222;
-export const LARGE_RESPONSE_MB = 3;
-export const FLEXIBLE_URL_REGEX = /^(http|https):\/\/[0-9a-zA-Z\-_.]+[/\w.\-+=:\][@%^*&!#?;]*/;
+export const LARGE_RESPONSE_MB = 5;
+export const FLEXIBLE_URL_REGEX = /^(http|https):\/\/[\wàâäèéêëîïôóœùûüÿçÀÂÄÈÉÊËÎÏÔŒÙÛÜŸÇ\-_.]+[/\wàâäèéêëîïôóœùûüÿçÀÂÄÈÉÊËÎÏÔŒÙÛÜŸÇ.\-+=:\][@%^*&!#?;]*/;
 export const CHECK_FOR_UPDATES_INTERVAL = 1000 * 60 * 60 * 3; // 3 hours
 export const PLUGIN_PATH = path.join((electron.remote || electron).app.getPath('userData'), 'plugins');
 
 // Hotkeys
-export const MOD_SYM = isMac() ? '⌘' : 'ctrl';
-export const ALT_SYM = isMac() ? '⌃' : 'alt';
-export const SHIFT_SYM = isMac() ? '⇧' : 'shift';
-export const CTRL_SYM = isMac() ? '⌃' : 'ctrl';
+export const MOD_SYM = isMac() ? '⌘' : 'Ctrl';
+export const ALT_SYM = isMac() ? '⌃' : 'Alt';
+export const SHIFT_SYM = isMac() ? '⇧' : 'Shift';
+export const CTRL_SYM = isMac() ? '⌃' : 'Ctrl';
 export function joinHotKeys (keys) {
   return keys.join(isMac() ? '' : '+');
 }
@@ -139,8 +144,13 @@ export const AUTH_BASIC = 'basic';
 export const AUTH_DIGEST = 'digest';
 export const AUTH_BEARER = 'bearer';
 export const AUTH_NTLM = 'ntlm';
+export const AUTH_HAWK = 'hawk';
 export const AUTH_AWS_IAM = 'iam';
 export const AUTH_NETRC = 'netrc';
+export const AUTH_ASAP = 'asap';
+
+export const HAWK_ALGORITHM_SHA256 = 'sha256';
+export const HAWK_ALGORITHM_SHA1 = 'sha1';
 
 const authTypesMap = {
   [AUTH_BASIC]: ['Basic', 'Basic Auth'],
@@ -149,8 +159,10 @@ const authTypesMap = {
   [AUTH_BEARER]: ['Bearer', 'Bearer Token'],
   [AUTH_OAUTH_1]: ['OAuth 1', 'OAuth 1.0'],
   [AUTH_OAUTH_2]: ['OAuth 2', 'OAuth 2.0'],
+  [AUTH_HAWK]: ['Hawk', 'Hawk'],
   [AUTH_AWS_IAM]: ['AWS', 'AWS IAM v4'],
-  [AUTH_NETRC]: ['Netrc', 'Netrc']
+  [AUTH_ASAP]: ['ASAP', 'Atlassian ASAP'],
+  [AUTH_NETRC]: ['Netrc', 'Netrc File']
 };
 
 export function getPreviewModeName (previewMode, useLong = false) {
@@ -181,13 +193,13 @@ export function getAuthTypeName (authType, useLong = false) {
   }
 }
 
-export function getContentTypeFromHeaders (headers) {
+export function getContentTypeFromHeaders (headers, defaultValue = null) {
   if (!Array.isArray(headers)) {
     return null;
   }
 
   const header = headers.find(({name}) => name.toLowerCase() === 'content-type');
-  return header ? header.value : null;
+  return header ? header.value : defaultValue;
 }
 
 export const RESPONSE_CODE_REASONS = {

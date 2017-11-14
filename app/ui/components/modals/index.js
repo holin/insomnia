@@ -1,5 +1,6 @@
 import PromptModal from './prompt-modal';
 import AlertModal from './alert-modal';
+import ErrorModal from './error-modal';
 
 const modals = {};
 
@@ -12,23 +13,19 @@ export function registerModal (instance) {
 }
 
 export function showPrompt (config) {
-  showModal(PromptModal, config);
+  return showModal(PromptModal, config);
 }
 
 export function showAlert (config) {
-  showModal(AlertModal, config);
+  return showModal(AlertModal, config);
+}
+
+export function showError (config) {
+  return showModal(ErrorModal, config);
 }
 
 export function showModal (modalCls, ...args) {
   return _getModal(modalCls).show(...args);
-}
-
-export function toggleModal (modalCls, ...args) {
-  return _getModal(modalCls).toggle(...args);
-}
-
-export function hideModal (modalCls) {
-  return _getModal(modalCls).hide();
 }
 
 export function hideAllModals () {

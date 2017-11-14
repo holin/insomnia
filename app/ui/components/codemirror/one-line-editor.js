@@ -1,4 +1,5 @@
-import React, {PureComponent, PropTypes} from 'react';
+import React, {PureComponent} from 'react';
+import PropTypes from 'prop-types';
 import ReactDOM from 'react-dom';
 import classnames from 'classnames';
 import autobind from 'autobind-decorator';
@@ -82,18 +83,21 @@ class OneLineEditor extends PureComponent {
   }
 
   componentDidMount () {
-    document.body.addEventListener('click', this._handleDocumentClick);
+    document.body.addEventListener('mousedown', this._handleDocumentMousedown);
   }
 
   componentWillUnmount () {
-    document.body.removeEventListener('click', this._handleDocumentClick);
+    document.body.removeEventListener('mousedown', this._handleDocumentMousedown);
   }
 
-  _handleDocumentClick (e) {
+  _handleDocumentMousedown (e) {
     if (!this._editor) {
       return;
     }
 
+    // Clear the selection if mousedown happens outside the input so we act like
+    // a regular <input>
+    // NOTE: Must be "mousedown", not "click" because "click" triggers on selection drags
     const node = ReactDOM.findDOMNode(this._editor);
     const clickWasOutsideOfComponent = !node.contains(e.target);
     if (clickWasOutsideOfComponent) {
@@ -275,7 +279,13 @@ class OneLineEditor extends PureComponent {
   }
 
   _mayContainNunjucks (text) {
-    return !!(text && text.match(NUNJUCKS_REGEX));
+    // Not sure, but sometimes this isn't a string
+    if (typeof text !== 'string') {
+      return false;
+    }
+
+    // Does the string contain Nunjucks tags?
+    return !!text.match(NUNJUCKS_REGEX);
   }
 
   render () {
@@ -288,6 +298,7 @@ class OneLineEditor extends PureComponent {
       render,
       onPaste,
       getRenderContext,
+      nunjucksPowerUserMode,
       getAutocompleteConstants,
       mode: syntaxMode,
       type: originalType
@@ -322,6 +333,7 @@ class OneLineEditor extends PureComponent {
           onChange={onChange}
           render={render}
           getRenderContext={getRenderContext}
+          nunjucksPowerUserMode={nunjucksPowerUserMode}
           getAutocompleteConstants={getAutocompleteConstants}
           className={classnames('editor--single-line', className)}
           defaultValue={defaultValue}
@@ -368,6 +380,7 @@ OneLineEditor.propTypes = {
   onPaste: PropTypes.func,
   render: PropTypes.func,
   getRenderContext: PropTypes.func,
+  nunjucksPowerUserMode: PropTypes.bool,
   getAutocompleteConstants: PropTypes.func,
   placeholder: PropTypes.string,
   className: PropTypes.string,

@@ -1,6 +1,6 @@
-import React, {PropTypes, PureComponent} from 'react';
+import React, {PureComponent} from 'react';
+import PropTypes from 'prop-types';
 import autobind from 'autobind-decorator';
-import ReactDOM from 'react-dom';
 import classnames from 'classnames';
 import Button from '../base/button';
 import Modal from '../base/modal';
@@ -8,6 +8,7 @@ import ModalHeader from '../base/modal-header';
 import ModalBody from '../base/modal-body';
 import MethodTag from '../tags/method-tag';
 import * as models from '../../../models';
+import {fuzzyMatch} from '../../../common/misc';
 
 @autobind
 class RequestSwitcherModal extends PureComponent {
@@ -23,6 +24,25 @@ class RequestSwitcherModal extends PureComponent {
       matchedWorkspaces: [],
       activeIndex: -1
     };
+  }
+
+  _handleKeydown (e) {
+    const keyCode = e.keyCode;
+
+    if (keyCode === 38 || (keyCode === 9 && e.shiftKey)) {
+      // Up or Shift+Tab
+      this._setActiveIndex(this.state.activeIndex - 1);
+    } else if (keyCode === 40 || keyCode === 9) {
+      // Down or Tab
+      this._setActiveIndex(this.state.activeIndex + 1);
+    } else if (keyCode === 13) {
+      // Enter
+      this._activateCurrentIndex();
+    } else {
+      return;
+    }
+
+    e.preventDefault();
   }
 
   _setModalRef (n) {
@@ -109,25 +129,14 @@ class RequestSwitcherModal extends PureComponent {
     // OPTIMIZATION: This only filters if we have a filter
     let matchedRequests = workspaceChildren.filter(d => d.type === models.request.type);
     if (searchString) {
-      const specialCharacters = ['.', '^', '$', '*', '+', '-', '?', '(', ')', '[', ']', '{', '}', '\\', '|'];
-
-      const regexSearchString = searchString
-        .toLowerCase()
-        .split('')
-        .map((c) => specialCharacters.includes(c) ? `\\${c}` : c)
-        .join('.*');
-
-      const toMatch = new RegExp(regexSearchString);
-
       matchedRequests = matchedRequests.filter(r => {
         const name = r.name.toLowerCase();
-        const id = r._id.toLowerCase();
 
         // Fuzzy match searchString to name
-        const matchesName = toMatch.test(name);
+        const matchesName = fuzzyMatch(searchString, name);
 
         // Match exact Id
-        const matchesId = id === toMatch;
+        const matchesId = r._id === searchString;
 
         return matchesName || matchesId;
       });
@@ -169,9 +178,9 @@ class RequestSwitcherModal extends PureComponent {
   }
 
   async show () {
-    this.modal.show();
     await this._handleChangeValue('');
-    this._input.focus();
+    this.modal.show();
+    setTimeout(() => this._input.focus(), 100);
   }
 
   hide () {
@@ -184,27 +193,6 @@ class RequestSwitcherModal extends PureComponent {
     } else {
       this.show();
     }
-  }
-
-  componentDidMount () {
-    ReactDOM.findDOMNode(this).addEventListener('keydown', e => {
-      const keyCode = e.keyCode;
-
-      if (keyCode === 38 || (keyCode === 9 && e.shiftKey)) {
-        // Up or Shift+Tab
-        this._setActiveIndex(this.state.activeIndex - 1);
-      } else if (keyCode === 40 || keyCode === 9) {
-        // Down or Tab
-        this._setActiveIndex(this.state.activeIndex + 1);
-      } else if (keyCode === 13) {
-        // Enter
-        this._activateCurrentIndex();
-      } else {
-        return;
-      }
-
-      e.preventDefault();
-    });
   }
 
   render () {
@@ -233,7 +221,7 @@ class RequestSwitcherModal extends PureComponent {
           <div>Quick Switch</div>
         </ModalHeader>
         <ModalBody className="request-switcher">
-          <div className="pad">
+          <div className="pad" onKeyDown={this._handleKeydown}>
             <div className="form-control form-control--outlined no-margin">
               <input
                 type="text"

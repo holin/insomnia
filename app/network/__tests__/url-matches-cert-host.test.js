@@ -1,4 +1,4 @@
-import urlMatchesCertHost from '../url-matches-cert-host';
+import {urlMatchesCertHost} from '../url-matches-cert-host';
 import {globalBeforeEach} from '../../__jest__/before-each';
 
 describe('urlMatchesCertHost', () => {
@@ -113,6 +113,18 @@ describe('urlMatchesCertHost', () => {
     it('should return true if the request URL is https and the certificate host has no protocol', () => {
       const requestUrl = 'https://www.example.org/some/resources?query=1';
       const certificateHost = '*.example.org';
+      expect(urlMatchesCertHost(certificateHost, requestUrl)).toBe(true);
+    });
+
+    it('should return true if certificate host has wildcard port', () => {
+      const requestUrl = 'http://localhost:3000/some/resources?query=1';
+      const certificateHost = 'localhost:*';
+      expect(urlMatchesCertHost(certificateHost, requestUrl)).toBe(true);
+    });
+
+    it('should return true if certificate host has wildcard in middle of port', () => {
+      const requestUrl = 'http://localhost:3000/some/resources?query=1';
+      const certificateHost = 'localhost:3*';
       expect(urlMatchesCertHost(certificateHost, requestUrl)).toBe(true);
     });
   });
