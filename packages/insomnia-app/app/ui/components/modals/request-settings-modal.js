@@ -10,7 +10,6 @@ import {trackEvent} from '../../../common/analytics';
 import DebouncedInput from '../base/debounced-input';
 import MarkdownEditor from '../markdown-editor';
 
-
 import Dropdown from '../base/dropdown/dropdown';
 import DropdownButton from '../base/dropdown/dropdown-button';
 import DropdownItem from '../base/dropdown/dropdown-item';
@@ -37,7 +36,7 @@ class RequestSettingsModal extends PureComponent {
     const workspaces = await models.workspace.all();
     let workspaceMap = {};
     workspaces.forEach((workspace) => {
-      workspaceMap[workspace._id] = workspace
+      workspaceMap[workspace._id] = workspace;
     });
     this.setState({
       workspaces,
@@ -125,9 +124,9 @@ class RequestSettingsModal extends PureComponent {
     } = this.props;
 
     const {showDescription, defaultPreviewMode, workspaceMap} = this.state;
-    let {workspaces} = this.state
-    workspaces = workspaces.filter(function(workspace){
-      return workspace._id != request.parentId;
+    let {workspaces} = this.state;
+    workspaces = workspaces.filter(function (workspace) {
+      return workspace._id !== request.parentId;
     });
     const workspace = workspaceMap[request.parentId];
     return (
@@ -183,7 +182,7 @@ class RequestSettingsModal extends PureComponent {
                     <DropdownItem key={workspace._id} value={workspace._id} onClick={() => this._handleChangeWorkspace(workspace)}>
                       {workspace.name}
                     </DropdownItem>
-                  )
+                  );
                 })
               }
             </Dropdown>
