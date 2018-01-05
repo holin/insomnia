@@ -189,7 +189,7 @@ export async function _actuallySend (
         if (infoType === Curl.info.debug.DATA_OUT) {
           if (content.length === 0) {
             // Sometimes this happens, but I'm not sure why. Just ignore it.
-          } else if (content.length < 1000) {
+          } else if (content.length < 5000) {
             timeline.push({name, value: content});
           } else {
             timeline.push({name, value: `(${describeByteSize(content.length)} hidden)`});

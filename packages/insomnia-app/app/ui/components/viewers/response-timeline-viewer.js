@@ -1,7 +1,12 @@
 import React, {PureComponent} from 'react';
 import PropTypes from 'prop-types';
-import {shell} from 'electron';
+import {shell, remote} from 'electron';
 import CodeEditor from '../codemirror/code-editor';
+import Button from '../base/button';
+import moment from 'moment';
+import path from 'path';
+import fs from 'fs';
+import {trackEvent} from '../../../common/analytics';
 
 class ResponseTimelineViewer extends PureComponent {
   _handleClickLink (link) {
@@ -47,21 +52,67 @@ class ResponseTimelineViewer extends PureComponent {
     }
   }
 
+  _handleExport () {
+    console.log("export");
+    const contentType = 'text/plain';
+
+    const extension = 'txt';
+    const lastDir = window.localStorage.getItem('insomnia.lastExportPath');
+    const dir = lastDir || remote.app.getPath('downloads');
+    const date = moment().format('YYYY-MM-DD');
+    const filename = `timeline_${date}`;
+    const options = {
+      title: 'Save as File',
+      buttonLabel: 'Save',
+      defaultPath: path.join(dir, filename),
+      filters: [{
+        name: 'Download', extensions: [extension]
+      }]
+    };
+    const {timeline} = this.props;
+    const rows = timeline.map(this.renderRow).filter(r => r !== null).join('\n');
+
+    remote.dialog.showSaveDialog(options, outputPath => {
+      if (!outputPath) {
+        trackEvent('Response', 'Timeline Save Cancel');
+        return;
+      }
+
+      // Remember last exported path
+      window.localStorage.setItem('insomnia.lastExportPath', path.dirname(filename));
+
+      // Save the file
+      fs.writeFile(outputPath, rows, err => {
+        if (err) {
+          console.warn('Failed to save timeline to file', err);
+          trackEvent('Response', 'Timeline Save Failure');
+        } else {
+          trackEvent('Response', 'Timeline Save Success');
+        }
+      });
+    });
+  }
+
   render () {
     const {timeline, editorFontSize, editorIndentSize, editorLineWrapping} = this.props;
     const rows = timeline.map(this.renderRow).filter(r => r !== null).join('\n');
     return (
-      <CodeEditor
-        hideLineNumbers
-        readOnly
-        onClickLink={this._handleClickLink}
-        defaultValue={rows}
-        fontSize={editorFontSize}
-        indentSize={editorIndentSize}
-        lineWrapping={editorLineWrapping}
-        className="pad-left"
-        mode="curl"
-      />
+      <div className="scrollable editor">
+        <button className="btn-export-timeline" onClick={this._handleExport.bind(this)}>
+          <span title="Export timeline"><i className="fa fa-download"/></span>
+        </button>
+        <CodeEditor
+          hideLineNumbers
+          readOnly
+          onClickLink={this._handleClickLink}
+          defaultValue={rows}
+          fontSize={editorFontSize}
+          indentSize={editorIndentSize}
+          lineWrapping={editorLineWrapping}
+          className="pad-left"
+          mode="curl"
+        />
+      </div>
     );
   }
 }
