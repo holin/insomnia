@@ -20,5 +20,8 @@
     "electron-rebuild": "^1.6.0",
     "jest": "^21.2.1",
     "lerna": "^2.5.1"
+  },
+  "dependencies": {
+    "insomnia-plugin-prompt": "^1.0.1"
   }
 }
